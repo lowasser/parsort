@@ -9,6 +9,7 @@ import qualified Data.Vector.Generic.Mutable as M
 
 import Data.Vector.Sort.Merge.Stream
 import qualified Data.Vector.Sort.Insertion as Ins
+import qualified Data.Vector.Sort.Merge as Merge
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Primitive as P
@@ -29,7 +30,7 @@ sort = sortBy (<=)
 sortBy :: Vector v a => (a -> a -> Bool) -> v a -> v a
 sortBy (<=?) = let
   mergeSort xs
-    | n <= 20	= Ins.sortBy (<=?) xs
+    | n <= 10000	= Merge.sortBy (<=?) xs
     | otherwise	= let
 	!n' = n `shiftR` 1
 	xs1' = mergeSort (unsafeTake n' xs)
