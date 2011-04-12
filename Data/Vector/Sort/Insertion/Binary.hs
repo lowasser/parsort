@@ -6,8 +6,6 @@ import Control.Monad.Primitive
 
 import Data.Bits
 
-import Data.Vector.Algorithms.Search
-
 import Data.Vector.Generic (Vector, modify, Mutable)
 import Data.Vector.Generic.Mutable
 import Data.Vector.Generic.Mutable.Move
