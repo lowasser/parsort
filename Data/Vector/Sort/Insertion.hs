@@ -1,8 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
-module Data.Vector.Sort.Insertion (sort, sortBy) where
+module Data.Vector.Sort.Insertion where
 
 import Control.Monad
-import Control.Monad.ST
+import Control.Monad.Primitive
 
 import Data.Vector.Generic (modify, Vector, Mutable)
 import Data.Vector.Generic.Mutable (MVector, length, unsafeWrite, unsafeRead)
@@ -15,11 +15,11 @@ sort = sortBy (<=)
 
 {-# INLINE sortBy #-}
 sortBy :: Vector v a => (a -> a -> Bool) -> v a -> v a
-sortBy (<=) = modify (insertionSortByM (<=))
+sortBy (<=) = modify (sortByM (<=))
 
-{-# INLINE insertionSortByM #-}
-insertionSortByM :: MVector v a => (a -> a -> Bool) -> v s a -> ST s ()
-insertionSortByM (<=?) xs = run 1 where
+{-# INLINE sortByM #-}
+sortByM :: (PrimMonad m, MVector v a) => (a -> a -> Bool) -> v (PrimState m) a -> m ()
+sortByM (<=?) xs = run 1 where
   !n = length xs
   run !i = when (i < n) $ do
       x <- unsafeRead xs i

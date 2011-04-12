@@ -30,7 +30,7 @@ sort = sortBy (<=)
 sortBy :: Vector v a => (a -> a -> Bool) -> v a -> v a
 sortBy (<=?) = let
   mergeSort xs
-    | n <= 10000	= Merge.sortBy (<=?) xs
+    | n <= 5000	= Merge.sortBy (<=?) xs
     | otherwise	= let
 	!n' = n `shiftR` 1
 	xs1' = mergeSort (unsafeTake n' xs)
