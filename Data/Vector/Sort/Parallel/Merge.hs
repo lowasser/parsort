@@ -17,7 +17,7 @@ import Prelude hiding (length, take, drop, null)
 
 {-# INLINE mergeVectors #-}
 mergeVectors :: (Ord a, Vector v a) => v a -> v a -> v a
-mergeVectors xs ys = unstream (mergeStreams (stream xs) (stream ys))
+mergeVectors xs ys = inline $ unstream (mergeStreams (stream xs) (stream ys))
 
 {-# SPECIALIZE mergeSort ::
       P.Vector Int -> P.Vector Int,
