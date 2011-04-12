@@ -1,13 +1,13 @@
 {-# LANGUAGE BangPatterns #-}
-module Data.Vector.Sort.Parallel.Merge.Stream where
+module Data.Vector.Sort.Merge.Stream where
 
 import Data.Vector.Fusion.Stream.Monadic
 
 data MergeState sL sR a = LR sL sR | L0 sL | R0 sR | L a sL sR | R sL a sR
 
 {-# INLINE mergeStreams #-}
-mergeStreams :: (Monad m, Ord a) => Stream m a -> Stream m a -> Stream m a
-mergeStreams (Stream stepL start1 sz1) (Stream stepR start2 sz2) =
+mergeStreams :: (Monad m) => (a -> a -> Bool) -> Stream m a -> Stream m a -> Stream m a
+mergeStreams (<=) (Stream stepL start1 sz1) (Stream stepR start2 sz2) =
   Stream step (LR start1 start2) (sz1 + sz2)
   where	step (LR !sL !sR) = do
 	  resL <- stepL sL

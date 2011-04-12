@@ -1,19 +1,16 @@
-module Data.Vector.Sort.Parallel.Merge (sort, sortBy) where
-
-import Control.Parallel
-import Control.Monad.Primitive
+module Data.Vector.Sort.Merge (sort, sortBy) where
 
 import Data.Bits
 import Data.Vector.Generic
-import qualified Data.Vector.Generic.Mutable as M
 
 import Data.Vector.Sort.Merge.Stream
+
 import qualified Data.Vector.Sort.Insertion as Ins
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Primitive as P
 
-import Prelude hiding (length, take, drop, null)
+import Prelude hiding (length)
 
 {-# INLINE mergeVectors #-}
 mergeVectors :: Vector v a => (a -> a -> Bool) -> v a -> v a -> v a
@@ -32,8 +29,6 @@ sortBy (<=?) = let
     | n <= 20	= Ins.sortBy (<=?) xs
     | otherwise	= let
 	!n' = n `shiftR` 1
-	xs1' = mergeSort (unsafeTake n' xs)
-	xs2' = mergeSort (unsafeDrop n' xs)
-	in xs1' `par` xs2' `pseq` mergeVectors (<=?) xs1' xs2'
+	in mergeVectors (<=?) (unsafeTake n' xs) (unsafeDrop n' xs)
     where n = length xs
   in mergeSort

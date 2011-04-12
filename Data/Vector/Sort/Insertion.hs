@@ -1,5 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
-module Data.Vector.Sort.Insertion where
+module Data.Vector.Sort.Insertion (sort, sortBy) where
 
 import Control.Monad
 import Control.Monad.ST
@@ -9,13 +9,13 @@ import Data.Vector.Generic.Mutable (MVector, length, unsafeWrite, unsafeRead)
 
 import Prelude hiding (length)
 
-{-# INLINE insertionSort #-}
-insertionSort :: (Ord a, Vector v a) => v a -> v a
-insertionSort = insertionSortBy (<=)
+{-# INLINE sort #-}
+sort :: (Ord a, Vector v a) => v a -> v a
+sort = sortBy (<=)
 
-{-# INLINE insertionSortBy #-}
-insertionSortBy :: Vector v a => (a -> a -> Bool) -> v a -> v a
-insertionSortBy (<=) = modify (insertionSortByM (<=))
+{-# INLINE sortBy #-}
+sortBy :: Vector v a => (a -> a -> Bool) -> v a -> v a
+sortBy (<=) = modify (insertionSortByM (<=))
 
 {-# INLINE insertionSortByM #-}
 insertionSortByM :: MVector v a => (a -> a -> Bool) -> v s a -> ST s ()
