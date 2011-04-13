@@ -6,16 +6,13 @@ import Control.Monad.Primitive
 
 import Data.Bits
 
-import Data.Vector.Generic (Vector, modify, Mutable)
-import Data.Vector.Generic.Mutable
-import Data.Vector.Generic.Mutable.Move
+import Data.Vector.Sort.Types
 
 import Prelude hiding (length, take, drop, read)
 
-import qualified Data.Vector as V
-import qualified Data.Vector.Primitive as P
-
-{-# SPECIALIZE sort :: P.Vector Int -> P.Vector Int #-}
+{-# SPECIALIZE sort :: 
+      PVector Int -> PVector Int,
+      Ord a => VVector a -> VVector a #-}
 {-# INLINE sort #-}
 sort :: (Vector v a, Movable (Mutable v) a, Ord a) => v a -> v a
 sort = sortBy (<=)
@@ -27,20 +24,20 @@ sortBy (<=) = modify (sortByM (<=))
 {-# INLINE sortByM #-}
 sortByM :: (Movable v a, PrimMonad m) => (a -> a -> Bool) -> v (PrimState m) a -> m ()
 sortByM (<=?) xs = run (n-1) where
-  !n = length xs
+  !n = lengthM xs
   binarySearch key cont = bin where
     bin l u
       | u <= l	= cont l
       | otherwise = do
 	  let k = (u + l) `shiftR` 1
-	  x <- unsafeRead xs k
+	  x <- read xs k
 	  if x <=? key then bin (k+1) u else bin l k
   run off = when (off > 0) $ do
-    x <- unsafeRead xs (off - 1)
+    x <- read xs (off - 1)
     let insertAt i = do
-	  let moveSrc = unsafeDrop off (unsafeTake i xs)
-	  let moveDst = unsafeDrop (off-1) (unsafeTake (i-1) xs)
-	  unsafeMove moveDst moveSrc
-	  unsafeWrite xs (i-1) x
+	  let moveSrc = dropM off (takeM i xs)
+	  let moveDst = dropM (off-1) (takeM (i-1) xs)
+	  move moveDst moveSrc
+	  write xs (i-1) x
     binarySearch x insertAt off n
     run (off-1)

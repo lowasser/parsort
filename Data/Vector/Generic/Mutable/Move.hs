@@ -2,11 +2,9 @@
 module Data.Vector.Generic.Mutable.Move (Movable, move, unsafeMove) where
 
 import Control.Monad.Primitive
-import Control.Monad.ST
 
 import Data.Primitive
 import Foreign.Storable (Storable)
-import Foreign.ForeignPtr
 import Foreign.Marshal.Array
 
 import Data.Vector.Generic.Mutable

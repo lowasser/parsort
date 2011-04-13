@@ -1,7 +1,5 @@
 module Benchmark where
 
-import Control.Monad
-
 import Criterion.Main
 import System.Random.MWC
 
