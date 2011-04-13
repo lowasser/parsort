@@ -43,7 +43,7 @@ quickSortM (<=?) = let
 	pivotIndex <- unstablePartition (<=? pivot) xs
 	lock <- newEmptyMVar
 	forkIO $ do
-	  qSort (unsafeTake (pivotIndex - 1) xs)
+	  qSort (unsafeTake pivotIndex xs)
 	  putMVar lock ()
 	qSort (unsafeDrop pivotIndex xs)
 	takeMVar lock

@@ -24,7 +24,7 @@ sortByM (<=?) xs = run 1 where
   run !i = when (i < n) $ do
       x <- unsafeRead xs i
       let go j
-	    | j <= 0	= unsafeWrite xs 0 x
+	    | j < 0	= unsafeWrite xs 0 x
 	    | otherwise = do
 		y <- unsafeRead xs j
 		if y <=? x then unsafeWrite xs (j+1) x else do

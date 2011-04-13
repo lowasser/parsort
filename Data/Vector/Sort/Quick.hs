@@ -2,6 +2,7 @@ module Data.Vector.Sort.Quick (sort, sortBy) where
 
 import Control.Monad.Primitive
 
+import Debug.Trace
 import Data.Bits
 
 import Data.Vector.Generic (Vector, modify)
@@ -16,16 +17,16 @@ import Prelude hiding (length)
 
 {-# SPECIALIZE sort ::
       P.Vector Int -> P.Vector Int,
-      Ord a => V.Vector a -> V.Vector a #-}
-sort :: (Vector v a, Ord a) => v a -> v a
+      (Show a, Ord a) => V.Vector a -> V.Vector a #-}
+sort :: (Vector v a, Show a, Ord a) => v a -> v a
 sort = sortBy (<=)
 
 {-# INLINE sortBy #-}
-sortBy :: Vector v a => (a -> a -> Bool) -> v a -> v a
+sortBy :: (Show a, Vector v a) => (a -> a -> Bool) -> v a -> v a
 sortBy (<=?) = modify (quickSortM (<=?))
 
 {-# INLINE quickSortM #-}
-quickSortM :: (PrimMonad m, MVector v a) => (a -> a -> Bool) -> v (PrimState m) a -> m ()
+quickSortM :: (PrimMonad m, Show a, MVector v a) => (a -> a -> Bool) -> v (PrimState m) a -> m ()
 quickSortM (<=?) = let
   qSort xs
     | n <= 20	= Ins.sortByM (<=?) xs
@@ -35,7 +36,7 @@ quickSortM (<=?) = let
 	c <- unsafeRead xs (n - 1)
 	let !pivot = medOf3 (<=?) a b c
 	pivotIndex <- unstablePartition (<=? pivot) xs
-	qSort (unsafeTake (pivotIndex - 1) xs)
+	qSort (unsafeTake pivotIndex xs)
 	qSort (unsafeDrop pivotIndex xs)
     where n = length xs
   in qSort

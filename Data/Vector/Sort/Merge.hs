@@ -29,6 +29,6 @@ sortBy (<=?) = let
     | n <= 20	= Ins.sortBy (<=?) xs
     | otherwise	= let
 	!n' = n `shiftR` 1
-	in mergeVectors (<=?) (unsafeTake n' xs) (unsafeDrop n' xs)
+	in mergeVectors (<=?) (mergeSort $ unsafeTake n' xs) (mergeSort $ unsafeDrop n' xs)
     where n = length xs
   in mergeSort
