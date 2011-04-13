@@ -11,26 +11,24 @@ import qualified Data.Vector.Sort.Insertion as Ins
 import qualified Data.Vector.Sort.Insertion.Binary as BI
 import qualified Data.Vector.Sort.Merge as Merge
 import qualified Data.Vector.Sort.Parallel.Merge as MergePar
+import qualified Data.Vector.Sort.Quick as Quick
+import qualified Data.Vector.Sort.Parallel.Quick as QuickPar
 
-insertion :: Vector Int -> Benchmark
+insertion, binaryInsertion, merge, mergePar, quick,  quickPar :: Vector Int -> Benchmark
 insertion xs = bench "Insertion sort" (whnf Ins.sort xs)
-
-binaryInsertion :: Vector Int -> Benchmark
 binaryInsertion xs = bench "Binary insertion sort" (whnf BI.sort xs)
-
-merge :: Vector Int -> Benchmark
 merge xs = bench "Merge sort" (whnf Merge.sort xs)
-
-mergePar :: Vector Int -> Benchmark
 mergePar xs = bench "Parallel merge sort" (whnf MergePar.sort xs)
+quick xs = bench "Quick sort" (whnf Quick.sort xs)
+quickPar xs = bench "Parallel quick sort" (whnf QuickPar.sort xs)
 
 benchForSize :: GenIO -> Int -> IO Benchmark
 benchForSize g n = do
   xs0 <- uniformVector g n
   let !xs = convert xs0 :: Vector Int
-  let tests = if n <= 1000 then [binaryInsertion xs, merge xs, mergePar xs, insertion xs]
-	else [merge xs, mergePar xs]
-  return $ bgroup (show n) tests
+  let slowTests = [binaryInsertion, insertion]
+  let fastTests = if n <= 1000 then [] else [merge, mergePar, quick, quickPar]
+  return $ bgroup (show n) (map ($ xs) (slowTests ++ fastTests))
 
 main = withSystemRandom $ \ g -> 
   defaultMain =<< mapM (benchForSize g) [10, 100, 1000, 1000000]

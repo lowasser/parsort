@@ -17,16 +17,16 @@ import Prelude hiding (length)
 
 {-# SPECIALIZE sort ::
       P.Vector Int -> P.Vector Int,
-      (Show a, Ord a) => V.Vector a -> V.Vector a #-}
-sort :: (Vector v a, Show a, Ord a) => v a -> v a
+      (Ord a) => V.Vector a -> V.Vector a #-}
+sort :: (Vector v a, Ord a) => v a -> v a
 sort = sortBy (<=)
 
 {-# INLINE sortBy #-}
-sortBy :: (Show a, Vector v a) => (a -> a -> Bool) -> v a -> v a
+sortBy :: (Vector v a) => (a -> a -> Bool) -> v a -> v a
 sortBy (<=?) = modify (quickSortM (<=?))
 
 {-# INLINE quickSortM #-}
-quickSortM :: (PrimMonad m, Show a, MVector v a) => (a -> a -> Bool) -> v (PrimState m) a -> m ()
+quickSortM :: (PrimMonad m, MVector v a) => (a -> a -> Bool) -> v (PrimState m) a -> m ()
 quickSortM (<=?) = let
   qSort xs
     | n <= 20	= Ins.sortByM (<=?) xs
