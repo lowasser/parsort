@@ -1,12 +1,14 @@
-module Data.Vector.Sort.Quick (sort, sortBy) where
+{-# LANGUAGE FlexibleContexts #-}
+module Data.Vector.Sort.Quick where
 
 import Control.Monad.Primitive
 
 import Debug.Trace
 import Data.Bits
 
-import Data.Vector.Generic (Vector, modify)
+import Data.Vector.Generic (Vector, Mutable, modify)
 import Data.Vector.Generic.Mutable
+import Data.Vector.Generic.Mutable.Move
 
 import qualified Data.Vector.Sort.Insertion as Ins
 
@@ -18,16 +20,16 @@ import Prelude hiding (length)
 {-# SPECIALIZE sort ::
       P.Vector Int -> P.Vector Int,
       (Ord a) => V.Vector a -> V.Vector a #-}
-sort :: (Vector v a, Ord a) => v a -> v a
+sort :: (Vector v a, Movable (Mutable v) a, Ord a) => v a -> v a
 sort = sortBy (<=)
 
 {-# INLINE sortBy #-}
-sortBy :: (Vector v a) => (a -> a -> Bool) -> v a -> v a
-sortBy (<=?) = modify (quickSortM (<=?))
+sortBy :: (Vector v a, Movable (Mutable v) a) => (a -> a -> Bool) -> v a -> v a
+sortBy (<=?) = modify (sortByM (<=?))
 
-{-# INLINE quickSortM #-}
-quickSortM :: (PrimMonad m, MVector v a) => (a -> a -> Bool) -> v (PrimState m) a -> m ()
-quickSortM (<=?) = let
+{-# INLINE sortByM #-}
+sortByM :: (PrimMonad m, Movable v a) => (a -> a -> Bool) -> v (PrimState m) a -> m ()
+sortByM (<=?) = let
   qSort xs
     | n <= 20	= Ins.sortByM (<=?) xs
     | otherwise	= do

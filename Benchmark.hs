@@ -26,9 +26,9 @@ benchForSize :: GenIO -> Int -> IO Benchmark
 benchForSize g n = do
   xs0 <- uniformVector g n
   let !xs = convert xs0 :: Vector Int
-  let slowTests = [binaryInsertion, insertion]
-  let fastTests = if n <= 1000 then [] else [merge, mergePar, quick, quickPar]
+  let slowTests = if n > 1000 then [] else [binaryInsertion, insertion]
+  let fastTests = if n <= 20 then [] else [merge, mergePar, quick, quickPar]
   return $ bgroup (show n) (map ($ xs) (slowTests ++ fastTests))
 
 main = withSystemRandom $ \ g -> 
-  defaultMain =<< mapM (benchForSize g) [10, 100, 1000, 1000000]
+  defaultMain =<< mapM (benchForSize g) [10, 100, 1000, 100000]

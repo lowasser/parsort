@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Data.Vector.Sort.Parallel.Merge (sort, sortBy) where
 
 import Control.Parallel
@@ -5,6 +6,7 @@ import Control.Monad.Primitive
 
 import Data.Bits
 import Data.Vector.Generic
+import Data.Vector.Generic.Mutable.Move
 import qualified Data.Vector.Generic.Mutable as M
 
 import Data.Vector.Sort.Merge.Stream
@@ -23,11 +25,11 @@ mergeVectors (<=) xs ys = unstream (mergeStreams (<=) (stream xs) (stream ys))
 {-# SPECIALIZE sort ::
       P.Vector Int -> P.Vector Int,
       Ord a => V.Vector a -> V.Vector a #-}
-sort :: (Vector v a, Ord a) => v a -> v a
+sort :: (Vector v a, Movable (Mutable v) a, Ord a) => v a -> v a
 sort = sortBy (<=)
 
 {-# INLINE sortBy #-}
-sortBy :: Vector v a => (a -> a -> Bool) -> v a -> v a
+sortBy :: (Vector v a, Movable (Mutable v) a) => (a -> a -> Bool) -> v a -> v a
 sortBy (<=?) = let
   mergeSort xs
     | n <= 5000	= Merge.sortBy (<=?) xs

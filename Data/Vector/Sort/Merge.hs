@@ -1,7 +1,9 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Data.Vector.Sort.Merge (sort, sortBy) where
 
 import Data.Bits
 import Data.Vector.Generic
+import Data.Vector.Generic.Mutable.Move
 
 import Data.Vector.Sort.Merge.Stream
 
@@ -19,11 +21,11 @@ mergeVectors (<=) xs ys = unstream (mergeStreams (<=) (stream xs) (stream ys))
 {-# SPECIALIZE sort ::
       P.Vector Int -> P.Vector Int,
       Ord a => V.Vector a -> V.Vector a #-}
-sort :: (Vector v a, Ord a) => v a -> v a
+sort :: (Vector v a, Movable (Mutable v) a, Ord a) => v a -> v a
 sort = sortBy (<=)
 
 {-# INLINE sortBy #-}
-sortBy :: Vector v a => (a -> a -> Bool) -> v a -> v a
+sortBy :: (Vector v a, Movable (Mutable v) a) => (a -> a -> Bool) -> v a -> v a
 sortBy (<=?) = let
   mergeSort xs
     | n <= 20	= Ins.sortBy (<=?) xs

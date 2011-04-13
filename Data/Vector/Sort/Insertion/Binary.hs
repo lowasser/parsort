@@ -15,16 +15,13 @@ import Prelude hiding (length, take, drop, read)
 import qualified Data.Vector as V
 import qualified Data.Vector.Primitive as P
 
-class (Vector v a, Movable (Mutable v) a) => BaseVector v a
-instance (Vector v a, Movable (Mutable v) a) => BaseVector v a
-
 {-# SPECIALIZE sort :: P.Vector Int -> P.Vector Int #-}
 {-# INLINE sort #-}
-sort :: (BaseVector v a, Ord a) => v a -> v a
+sort :: (Vector v a, Movable (Mutable v) a, Ord a) => v a -> v a
 sort = sortBy (<=)
 
 {-# INLINE sortBy #-}
-sortBy :: BaseVector v a => (a -> a -> Bool) -> v a -> v a
+sortBy :: (Vector v a, Movable (Mutable v) a) => (a -> a -> Bool) -> v a -> v a
 sortBy (<=) = modify (sortByM (<=))
 
 {-# INLINE sortByM #-}
