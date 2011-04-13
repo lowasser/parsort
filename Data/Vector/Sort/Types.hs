@@ -5,10 +5,11 @@ module Data.Vector.Sort.Types
   Vector, MVector, Mutable, G.modify, G.length, lengthM,
   index, read, write, take, drop, takeM, dropM,
   copy, copyM, move,
-  checkIndex, checkRange
+  checkIndex, checkRange, checkRangeM, assert
   ) where
 
 import Control.Monad.Primitive
+import Control.Exception.Base
 
 import Text.Printf
 
@@ -78,6 +79,12 @@ checkIndex :: Vector v a => Int -> v a -> b -> b
 checkIndex i xs z = 
   asserter (0 <= i && i < length xs)
     (printf "Index %d out of bounds %d" i (length xs))
+    z
+
+{-# INLINE checkRangeM #-}
+checkRangeM :: MVector v a => Int -> Int -> v s a -> b -> b
+checkRangeM i j xs z = asserter (0 <= i && i < j && j <= lengthM xs)
+    (printf "Range [%d, %d) out of bounds %d" i j (lengthM xs))
     z
 
 {-# INLINE checkRange #-}
