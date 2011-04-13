@@ -1,7 +1,8 @@
-{-# LANGUAGE ScopedTypeVariables, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables, MultiParamTypeClasses, FlexibleInstances, BangPatterns #-}
 module Data.Vector.Generic.Mutable.Move (Movable, move, unsafeMove) where
 
 import Control.Monad.Primitive
+import Control.Monad.ST
 
 import Data.Primitive
 import Foreign.Storable (Storable)
@@ -9,7 +10,7 @@ import Foreign.Marshal.Array
 
 import Data.Vector.Generic.Mutable
 
-import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as V
 import qualified Data.Vector.Primitive as P
 import qualified Data.Vector.Storable as S
 import qualified Data.Vector.Unboxed as U
@@ -30,7 +31,18 @@ class MVector v a => Movable v a where
     src' <- clone src
     unsafeCopy dst src'
 
-instance Movable V.MVector a
+instance Movable V.MVector a where
+  basicUnsafeMove dst src = primToPrim (moveV dst src)
+
+moveV :: V.MVector s a -> V.MVector s a -> ST s ()
+moveV !dst@(V.MVector dOff _ dArr) !src@(V.MVector sOff sLen sArr)
+    | overlaps dst src	= case compare dOff sOff of
+	EQ	-> return ()
+	LT	-> P.mapM_ (\ i -> unsafeRead src i >>= unsafeWrite dst i) (P.enumFromN 0 sLen)
+	GT	-> do	src' <- clone src
+			unsafeCopy dst src'
+    | otherwise	= unsafeCopy dst src
+
 instance U.Unbox a => Movable U.MVector a
 
 instance Prim a => Movable P.MVector a where

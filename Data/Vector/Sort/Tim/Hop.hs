@@ -9,6 +9,8 @@ import Data.Vector.Generic
 
 import Data.Vector.Sort.Types
 
+import GHC.Exts
+
 import Prelude hiding (length)
 
 offCont :: Int -> (Int -> Int -> a) -> Int -> Int -> a
@@ -24,12 +26,8 @@ gallopLeft (<=?) key xs !hint
   where	a >? b = not (a <=? b)
 	go l r = binarySearchL (key <=?) xs (l+1) r
 
-gallopRight (<=?) key xs !hint
-  | key <? index xs hint
-  		= hopLeft (key <?) (unsafeTake hint xs) go
-  | otherwise	= hopRight (<=? key) (unsafeDrop hint xs) (offCont hint go)
-  where	a <? b = not (b <=? a)
-	go l r = binarySearchL (key <?) xs (l+1) r
+gallopRight (<=?) key xs !hint = inline gallopLeft (<?) key xs hint
+  where a <? b = not (b <=? a)
 
 {-# INLINE binarySearchL #-}
 binarySearchL :: Vector v a => (a -> Bool) -> v a -> Int -> Int -> Int

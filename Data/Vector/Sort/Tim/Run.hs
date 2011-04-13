@@ -63,7 +63,6 @@ mergeLoV :: forall a . Int -> LEq a -> VMVector RealWorld a -> Int -> Int -> Int
 mergeLoV mG (<=?) xs off1 len1 len2 =
   mergeLo (undefined :: VVector a) mG (<=?) xs off1 len1 len2
 
-{-# INLINE mergeLo #-}
 -- Assumes the first element of run 1 is greater than the first element of run 2, and
 -- the last element of run 1 is greater than all elements of run 2.
 mergeLo :: forall v a . (Vector v a, Movable (Mutable v) a)
@@ -105,18 +104,18 @@ mergeLo _ !minGallop (<=?) xs !off1 len1 len2
 	  gallopNow s@Status{..} = do
 	    curGallop <- peek gallopPtr
 	    return (count1 + count2 >= curGallop)
-	  step s@Status{..} = assert (not (breakNow s)) $ do
+	  step s@Status{..} = {-# CORE "step" #-} assert (not (breakNow s)) $ do
 	    shouldGallop <- gallopNow s
 	    if shouldGallop then doGallop1 s else do
 	      x1 <- curs1 s
 	      x2 <- curs2 s
 	      if x1 <=? x2 then advance1 s 1 step
 		else advance2 s 1 step
-	  doGallop1 s = assert (not (breakNow s)) $ do
+	  doGallop1 s = {-# CORE "doGallop1" #-} assert (not (breakNow s)) $ do
 	    key2 <- curs2 s
 	    let !count1' = gallopRight (<=?) key2 (curRun1 s) 0
 	    advance1 s{count1=0} count1' $ \ s' -> advance2 s' 1 doGallop2
-	  doGallop2 s = do
+	  doGallop2 s = {-# CORE "doGallop2" #-} do
 	    key1 <- curs1 s
 	    run2' <- unsafeFreeze (curRun2 s)
 	    let !count2' = gallopLeft (<=?) key1 (run2' :: v a) 0
@@ -128,7 +127,7 @@ mergeLo _ !minGallop (<=?) xs !off1 len1 len2
 		  modifyPtr (\ g -> max 2 (g + 2)) gallopPtr
 		  step s''
 	  done :: MergeStatus -> IO ()
-	  done s@Status{..} = case (len1 - cursor1, len2 - cursor2) of
+	  done s@Status{..} = {-# CORE "done" #-} case (len1 - cursor1, len2 - cursor2) of
 	      (1, l2) -> assert (l2 > 0) $ do
 		move (takeM l2 $ curDest s) (curRun2 s)
 		write xs (off1 + len1 + len2 - 1) (index (curRun1 s) 0)
