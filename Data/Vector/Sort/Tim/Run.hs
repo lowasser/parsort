@@ -63,10 +63,32 @@ mergeLoV :: forall a . Int -> LEq a -> VMVector RealWorld a -> Int -> Int -> Int
 mergeLoV mG (<=?) xs off1 len1 len2 =
   mergeLo (undefined :: VVector a) mG (<=?) xs off1 len1 len2
 
+{-# INLINE mergeLo #-}
 -- Assumes the first element of run 1 is greater than the first element of run 2, and
 -- the last element of run 1 is greater than all elements of run 2.
 mergeLo :: forall v a . (Vector v a, Movable (Mutable v) a)
     => v a -> Int -> LEq a -> Mutable v RealWorld a -> Int -> Int -> Int -> IO Int
+#ifdef SIMPLE
+mergeLo _ g (<=?) xs !off1 len1 len2 = do
+  !run1 <- freeze (takeM len1 (dropM off1 xs))
+  let !run2 = takeM len2 (dropM off2 xs)
+  let go !i !j !dst
+	| j >= len2	= 
+	    copy (takeM (len1 - i) $ dropM dst xs)
+		(drop i run1 :: v a)
+	| i >= len1	= return ()
+	| otherwise	= do
+	    let x1 = index run1 i
+	    x2 <- read run2 j
+	    if x1 <=? x2
+	      then do	write xs dst x1
+			go (i+1) j (dst+1)
+	      else do	write xs dst x2
+			go i (j+1) (dst+1)
+  go 0 0 off1
+  return g
+  where !off2 = off1 + len2
+#else
 mergeLo _ !minGallop (<=?) xs !off1 len1 len2 
   | checks $ len2 == 1 = do
       x <- read run2 0
@@ -141,3 +163,4 @@ mergeLo _ !minGallop (<=?) xs !off1 len1 len2
 	checks = assert (len1 <= len2) . checkRangeM off1 (off1 + len1) xs . checkRangeM off2 (off2 + len2) xs
 	!run2 = takeM len2 (dropM off2 xs)
 	!destArr = takeM (len1 + len2) (dropM off1 xs)
+#endif
