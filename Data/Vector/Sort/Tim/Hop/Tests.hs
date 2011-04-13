@@ -5,12 +5,18 @@ import Control.Monad.ST
 import Test.QuickCheck
 
 import qualified Data.List as L
+import Data.Maybe
 import Data.Vector.Primitive
 
 import Data.Vector.Sort.Tim.Hop
 import Data.Vector.Algorithms.Search
 
-main = quickCheck (\ x (NonEmpty xs0) -> let xs = (fromList (L.sort xs0)) :: Vector Int in
-  gallopLeft (<=) x xs 0 == runST (do
-    mv <- thaw xs
-    binarySearchL mv x))
+import Prelude hiding (length, reverse)
+
+tests = [
+  \ x (NonEmpty xs0) (NonNegative i) -> let xs = (fromList (L.sort xs0)) :: Vector Int in
+  printTestCase "gallopLeft" $ gallopLeft (<=) x xs (i `rem` length xs) == fromMaybe (length xs) (findIndex (>= x) xs),
+  \ x (NonEmpty xs0) (NonNegative i) -> let xs = (fromList (L.sort xs0)) :: Vector Int in
+  printTestCase "gallopRight" $ gallopRight (<=) x xs (i `rem` length xs) == fromMaybe (length xs) (findIndex (> x) xs)]
+
+main = quickCheck (conjoin tests)
