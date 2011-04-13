@@ -1,6 +1,6 @@
 {-# LANGUAGE BangPatterns, DoAndIfThenElse, RecordWildCards, NamedFieldPuns, CPP, ScopedTypeVariables, FlexibleContexts #-}
 {-# OPTIONS -funbox-strict-fields #-}
-module Data.Vector.Sort.Tim.Run (countRunAndMakeAscending, mergeLo, mergeLoV) where
+module Data.Vector.Sort.Tim.Run (countRunAndMakeAscending, merge) where
 
 import Control.Monad.Primitive
 
@@ -17,6 +17,7 @@ import Foreign.Storable
 import Foreign.Ptr
 
 import Prelude hiding (length, read, reverse, mapM_, take, drop)
+import GHC.Exts
 
 {-# SPECIALIZE countRunAndMakeAscending ::
       PrimMonad m => LEq Int -> PMVector (PrimState m) Int -> (Int -> m b) -> m b,
@@ -59,14 +60,27 @@ modifyPtr f ptr = do
 decr :: Ptr Int -> IO ()
 decr = modifyPtr (subtract 1)
 
-mergeLoV :: forall a . Int -> LEq a -> VMVector RealWorld a -> Int -> Int -> Int -> IO Int
-mergeLoV mG (<=?) xs off1 len1 len2 =
-  mergeLo (undefined :: VVector a) mG (<=?) xs off1 len1 len2
+{-# RULES
+      "merge/Array" [~0] forall (v :: VVector a) . merge v = mergeV
+      #-}
+
+mergeV :: forall a . Int -> LEq a -> VMVector RealWorld a -> Int -> Int -> Int -> IO Int
+mergeV g (<=?) xs off1 len1 len2
+  | len1 <= len2	= mergeLo v g (<=?) xs off1 len1 len2
+  | otherwise		= mergeHi v g (<=?) xs off1 len1 len2
+  where v = undefined :: VVector a
+
+merge :: (Vector v a, Movable (Mutable v) a) =>
+  v a -> Int -> LEq a -> Mutable v RealWorld a -> Int -> Int -> Int -> IO Int
+merge v g (<=?) xs off1 len1 len2
+  | len1 <= len2	= mergeLo v g (<=?) xs off1 len1 len2
+  | otherwise		= mergeHi v g (<=?) xs off1 len1 len2
 
 {-# INLINE mergeLo #-}
+{-# INLINE mergeHi #-}
 -- Assumes the first element of run 1 is greater than the first element of run 2, and
 -- the last element of run 1 is greater than all elements of run 2.
-mergeLo :: forall v a . (Vector v a, Movable (Mutable v) a)
+mergeLo, mergeHi :: forall v a . (Vector v a, Movable (Mutable v) a)
     => v a -> Int -> LEq a -> Mutable v RealWorld a -> Int -> Int -> Int -> IO Int
 #ifdef SIMPLE
 mergeLo _ g (<=?) xs !off1 len1 len2 = do
@@ -164,3 +178,21 @@ mergeLo _ !minGallop (<=?) xs !off1 len1 len2
 	!run2 = takeM len2 (dropM off2 xs)
 	!destArr = takeM (len1 + len2) (dropM off1 xs)
 #endif
+
+mergeHi _ g (<=?) xs off1 len1 !len2 = do
+  run2 <- freeze (takeM len2 $ dropM off2 xs)
+  let run1 = takeM len1 $ dropM off1 xs
+  let go !i !j !dst
+	| i < 0	= copy (takeM j $ dropM off1 xs) (take j run2 :: v a)
+	| j < 0	= return ()
+	| otherwise = do
+	    x1 <- read run1 i
+	    let x2 = index run2 j
+	    if x1 <=? x2
+	      then do	write xs dst x2
+			go i (j-1) (dst-1)
+	      else do	write xs dst x1
+			go (i-1) j (dst-1)
+  go (len1-1) (len2-1) (off2 + len2 - 1)
+  return g
+  where !off2 = off1 + len1
