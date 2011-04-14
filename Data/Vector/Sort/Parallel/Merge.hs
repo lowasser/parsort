@@ -5,13 +5,11 @@ import Control.Monad.Primitive
 
 import Data.Bits
 
-import Data.Vector.Sort.Types
-import Data.Vector.Sort.Comparator
+import Data.Vector.Sort.Common
+
 import Data.Vector.Sort.Parallel.Utils
 import Data.Vector.Sort.Merge.Inplace
-import qualified Data.Vector.Sort.Insertion as Ins
-
-import Prelude hiding (length, take, drop, read)
+import qualified Data.Vector.Sort.Merge as Seq
 
 {-# INLINE sort #-}
 sort :: (Vector v a, Ord a) => v a -> v a
@@ -19,13 +17,10 @@ sort = sortBy (<=)
 
 {-# INLINE sortBy #-}
 sortBy :: Vector v a => LEq a -> v a -> v a
-sortBy (<=?) xs = unsafePerformIO (sortPermIO sortImpl (<=?) xs)
+sortBy = unsafeSortPermIO sortImpl
 
 sortImpl :: (?cmp :: Comparator) => PMVector RealWorld Int -> IO ()
-sortImpl xs
-  | n <= 20	= primToPrim $ Ins.sortByM xs
-  | otherwise	= do
-      let !n' = n `shiftR` 1
-      doBoth (sortImpl (takeM n' xs)) (sortImpl (dropM n' xs))
-      primToPrim $ mergeLo n' xs
-  where n = lengthM xs
+sortImpl = parallelSort Seq.sortImpl $ \ xs -> do
+  let !n' = lengthM xs `shiftR` 1
+  doBoth (sortImpl (takeM n' xs)) (sortImpl (dropM n' xs))
+  primToPrim $ mergeLo n' xs

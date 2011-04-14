@@ -4,11 +4,12 @@ module Data.Vector.Sort.Types
   PrimMonad, PrimState,
   Vector, MVector, Mutable, G.modify, G.length, lengthM,
   index, indexM, read, write, take, drop, takeM, dropM, swap,
-  copy, copyM, move, moveBy, backpermute,
+  copy, copyM, move, moveBy, backpermute, ST,
   checkIndex, checkRange, checkRangeM, assert, assertM
   ) where
 
 import Control.Monad.Primitive
+import Control.Monad.ST
 import Control.Exception.Base
 
 import Text.Printf

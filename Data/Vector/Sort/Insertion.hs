@@ -2,7 +2,6 @@
 module Data.Vector.Sort.Insertion where
 
 import Control.Monad
-import Control.Monad.ST
 
 import Data.Vector.Sort.Types
 import Data.Vector.Sort.Comparator

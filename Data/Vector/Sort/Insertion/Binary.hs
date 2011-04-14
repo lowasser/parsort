@@ -2,7 +2,6 @@
 module Data.Vector.Sort.Insertion.Binary where
 
 import Control.Monad
-import Control.Monad.ST
 
 import Data.Bits
 

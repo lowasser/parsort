@@ -1,16 +1,11 @@
-{-# LANGUAGE BangPatterns, ImplicitParams #-}
-module Data.Vector.Sort.Parallel.Quick where
+{-# LANGUAGE ImplicitParams #-}
+module Data.Vector.Sort.Parallel.Quick (sort, sortBy) where
 
-import Control.Monad.Primitive
-
-import Data.Vector.Sort.Types
-import Data.Vector.Sort.Comparator
+import Data.Vector.Sort.Common
 import Data.Vector.Sort.Quick.Pivot
 import Data.Vector.Sort.Quick.Partition
 import Data.Vector.Sort.Parallel.Utils
-import qualified Data.Vector.Sort.Quick as Q
-
-import Prelude hiding (length, read)
+import qualified Data.Vector.Sort.Quick as Seq
 
 {-# INLINE sort #-}
 sort :: (Vector v a, Ord a) => v a -> v a
@@ -18,15 +13,12 @@ sort = sortBy (<=)
 
 {-# INLINE sortBy #-}
 sortBy :: Vector v a => LEq a -> v a -> v a
-sortBy (<=?) xs = unsafePerformIO $ sortPermIO sortByM (<=?) xs
+sortBy = unsafeSortPermIO sortImpl
 
-{-# INLINE sortByM #-}
-sortByM :: (?cmp :: Comparator) => PMVector RealWorld Int -> IO ()
-sortByM xs
-    | n <= 1000	= primToPrim $ Q.sortByM xs
-    | otherwise	= pickPivot xs $ \ pivotIndex ->
-	partition pivotIndex xs $ \ breakIndex -> 
-	let doLeft = sortByM (takeM breakIndex xs)
-	    doRight = sortByM (dropM (breakIndex + 1) xs)
-	in doBoth doLeft doRight
-    where n = lengthM xs
+sortImpl :: (?cmp :: Comparator) => PMVector RealWorld Int -> IO ()
+sortImpl = parallelSort Seq.sortImpl $ \ xs -> pickPivot xs $ 
+  \ pivotIndex -> partition pivotIndex xs $
+  \ breakIndex -> let 
+      doLeft = sortImpl (takeM breakIndex xs)
+      doRight = sortImpl (dropM (breakIndex + 1) xs)
+      in doBoth doLeft doRight
