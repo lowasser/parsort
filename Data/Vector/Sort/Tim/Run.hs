@@ -43,7 +43,7 @@ countRunAndMakeAscending (<=?) xs cont
 	countDescendingRun xi !i
 	  | i' < n	= do
 	      xi' <- read xs i'
-	      if xi <=? xi' then descCont i' else countAscendingRun xi' i'
+	      if xi <=? xi' then descCont i' else countDescendingRun xi' i'
 	  | otherwise	= descCont n
 	  where i' = i + 1
 
@@ -76,13 +76,16 @@ merge v g (<=?) xs off1 len1 len2
   | len1 <= len2	= mergeLo v g (<=?) xs off1 len1 len2
   | otherwise		= mergeHi v g (<=?) xs off1 len1 len2
 
+assertM :: Monad m => Bool -> m ()
+assertM b = assert b (return ())
+
 {-# INLINE mergeLo #-}
 {-# INLINE mergeHi #-}
 -- Assumes the first element of run 1 is greater than the first element of run 2, and
 -- the last element of run 1 is greater than all elements of run 2.
 mergeLo, mergeHi :: forall v a . (Vector v a, Movable (Mutable v) a)
     => v a -> Int -> LEq a -> Mutable v RealWorld a -> Int -> Int -> Int -> IO Int
-#ifdef SIMPLE
+#ifndef ADVANCED
 mergeLo _ g (<=?) xs !off1 len1 len2 = do
   !run1 <- freeze (takeM len1 (dropM off1 xs))
   let !run2 = takeM len2 (dropM off2 xs)
@@ -101,7 +104,7 @@ mergeLo _ g (<=?) xs !off1 len1 len2 = do
 			go i (j+1) (dst+1)
   go 0 0 off1
   return g
-  where !off2 = off1 + len2
+  where !off2 = off1 + len1
 #else
 mergeLo _ !minGallop (<=?) xs !off1 len1 len2 
   | checks $ len2 == 1 = do
@@ -183,7 +186,7 @@ mergeHi _ g (<=?) xs off1 len1 !len2 = do
   run2 <- freeze (takeM len2 $ dropM off2 xs)
   let run1 = takeM len1 $ dropM off1 xs
   let go !i !j !dst
-	| i < 0	= copy (takeM j $ dropM off1 xs) (take j run2 :: v a)
+	| i < 0	= copy (takeM (j+1) $ dropM off1 xs) (take (j+1) run2 :: v a)
 	| j < 0	= return ()
 	| otherwise = do
 	    x1 <- read run1 i

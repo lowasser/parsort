@@ -12,6 +12,7 @@ import qualified Data.Vector.Sort.Merge as M
 import qualified Data.Vector.Sort.Parallel.Merge as PM
 import qualified Data.Vector.Sort.Insertion as I
 import qualified Data.Vector.Sort.Insertion.Binary as IB
+import qualified Data.Vector.Sort.Tim as T
 
 implementations :: [(String, Vector Int -> Vector Int)]
 implementations = [
@@ -20,7 +21,8 @@ implementations = [
   ("quick", Q.sort),
   ("p-quick", PQ.sort),
   ("merge", M.sort),
-  ("p-merge", PM.sort)]
+  ("p-merge", PM.sort),
+  ("tim", T.sort)]
 
 main = quickCheck (\ xs -> conjoin
     [printTestCase sortImpl $ L.sort xs == toList (theSort (fromList xs))

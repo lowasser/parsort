@@ -48,12 +48,12 @@ move :: (PrimMonad m, Mov.Movable v a) => v (PrimState m) a -> v (PrimState m) a
 asserter :: Bool -> String -> b -> b
 
 #ifdef DEBUG
-index = (!)
+index xs i = checkIndex i xs ((G.!) xs i)
 read = M.read
 write = M.write
 asserter True _ b = b
 asserter False x _ = error x
-take = G.take
+take k xs = checkRange 0 k xs $ G.take k xs
 drop = G.drop
 takeM = M.take
 dropM = M.drop
@@ -83,12 +83,12 @@ checkIndex i xs z =
 
 {-# INLINE checkRangeM #-}
 checkRangeM :: MVector v a => Int -> Int -> v s a -> b -> b
-checkRangeM i j xs z = asserter (0 <= i && i < j && j <= lengthM xs)
+checkRangeM i j xs z = asserter (0 <= i && i <= j && j <= lengthM xs)
     (printf "Range [%d, %d) out of bounds %d" i j (lengthM xs))
     z
 
 {-# INLINE checkRange #-}
 checkRange :: Vector v a => Int -> Int -> v a -> b -> b
-checkRange i j xs z = asserter (0 <= i && i < j && j <= length xs)
+checkRange i j xs z = asserter (0 <= i && i <= j && j <= length xs)
     (printf "Range [%d, %d) out of bounds %d" i j (length xs))
     z

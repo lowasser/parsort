@@ -2,16 +2,13 @@
 {-# OPTIONS -funbox-strict-fields #-}
 module Data.Vector.Sort.Tim.Hop (gallopLeft, gallopRight) where
 
-import Control.Exception.Base
-
 import Data.Bits
-import Data.Vector.Generic
 
 import Data.Vector.Sort.Types
 
 import GHC.Exts
 
-import Prelude hiding (length)
+import Prelude hiding (length, take, drop)
 
 offCont :: Int -> (Int -> Int -> a) -> Int -> Int -> a
 offCont !off cont a b = cont (a + off) (b + off)
@@ -20,9 +17,9 @@ offCont !off cont a b = cont (a + off) (b + off)
 {-# SPECIALIZE gallopRight :: LEq a -> a -> VVector a -> Int -> Int #-}
 gallopLeft, gallopRight :: Vector v a => LEq a -> a -> v a -> Int -> Int
 gallopLeft (<=?) key xs !hint
-  | key <=? index xs hint
-  		= hopLeft (key <=?) (unsafeTake hint xs) go
-  | otherwise	= hopRight (key >?) (unsafeDrop hint xs) (offCont hint go)
+  | checkIndex hint xs $ key <=? index xs hint
+  		= hopLeft (key <=?) (take hint xs) go
+  | otherwise	= hopRight (key >?) (drop hint xs) (offCont hint go)
   where	a >? b = not (a <=? b)
 	go l r = binarySearchL (key <=?) xs (l+1) r
 

@@ -19,25 +19,25 @@ sort = sortBy (<=)
 
 {-# INLINE sortBy #-}
 sortBy :: (Vector v a, Movable (Mutable v) a) => (a -> a -> Bool) -> v a -> v a
-sortBy (<=) = modify (sortByM (<=))
+sortBy (<=) = modify (\ xs -> sortByM (<=) xs 1)
 
 {-# INLINE sortByM #-}
-sortByM :: (Movable v a, PrimMonad m) => (a -> a -> Bool) -> v (PrimState m) a -> m ()
-sortByM (<=?) xs = run (n-1) where
+sortByM :: (Movable v a, PrimMonad m) => LEq a -> v (PrimState m) a -> Int -> m ()
+sortByM (<=?) xs start = run (max start 1) where
   !n = lengthM xs
-  binarySearch key cont = bin where
+  binarySearch key l u cont = bin l u where
     bin l u
       | u <= l	= cont l
       | otherwise = do
 	  let k = (u + l) `shiftR` 1
 	  x <- read xs k
 	  if x <=? key then bin (k+1) u else bin l k
-  run off = when (off > 0) $ do
-    x <- read xs (off - 1)
-    let insertAt i = do
-	  let moveSrc = dropM off (takeM i xs)
-	  let moveDst = dropM (off-1) (takeM (i-1) xs)
-	  move moveDst moveSrc
-	  write xs (i-1) x
-    binarySearch x insertAt off n
-    run (off-1)
+  run start = when (start < n) $ do
+    x <- read xs start
+    binarySearch x 0 start $ \ k -> do
+      let m = start - k
+      let moveDst = takeM m (dropM (k+1) xs)
+      let moveSrc = takeM m (dropM k xs)
+      move moveDst moveSrc
+      write xs k x
+      run (start+1)

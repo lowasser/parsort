@@ -35,7 +35,7 @@ instance Movable V.MVector a where
   basicUnsafeMove dst src = primToPrim (moveV dst src)
 
 moveV :: V.MVector s a -> V.MVector s a -> ST s ()
-moveV !dst@(V.MVector dOff _ dArr) !src@(V.MVector sOff sLen sArr)
+moveV !dst@(V.MVector dOff _ _) !src@(V.MVector sOff sLen _)
     | overlaps dst src	= case compare dOff sOff of
 	EQ	-> return ()
 	LT	-> P.mapM_ (\ i -> unsafeRead src i >>= unsafeWrite dst i) (P.enumFromN 0 sLen)

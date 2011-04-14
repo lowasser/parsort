@@ -11,5 +11,6 @@ bench : Benchmark
 
 test :
 	ghc --make Tests -o Tests -main-is Tests -fforce-recomp \
-	  -ddump-minimal-imports -Wall -fno-warn-name-shadowing
+	  -ddump-minimal-imports -Wall -fno-warn-name-shadowing \
+	  -DDEBUG
 	./Tests
