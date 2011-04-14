@@ -1,5 +1,5 @@
 {-# LANGUAGE ImplicitParams, BangPatterns, DoAndIfThenElse #-}
-module Data.Vector.Sort.Merge (sort, sortBy) where
+module Data.Vector.Sort.Merge (sort, sortBy, sortImpl) where
 
 import Control.Monad.ST
 
