@@ -56,7 +56,7 @@ sortPermM sortAlg (<=?) xs =
   where ?cmp = toComparator (<=?) xs
 
 {-# INLINE [0] sortPermIO #-}
-sortPermIO :: Vector v a => (forall s . (?cmp :: Comparator) => PMVector RealWorld Int -> IO ())
+sortPermIO :: Vector v a => ((?cmp :: Comparator) => PMVector RealWorld Int -> IO ())
   -> LEq a -> v a -> IO (v a)
 sortPermIO sortAlg (<=?) xs = do
 	pv <- M.unstream $ Stream.enumFromStepN 0 1 (length xs)
@@ -64,7 +64,6 @@ sortPermIO sortAlg (<=?) xs = do
 	perm <- unsafeFreeze pv
 	return (backpermute xs (perm :: PVector Int))
   where ?cmp = toComparator (<=?) xs
-
 
 {-# RULES
       "sortPerm/Int" sortPerm = \ sortAlg (<=?) xs ->

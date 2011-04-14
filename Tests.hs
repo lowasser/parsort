@@ -7,6 +7,7 @@ import Data.Vector.Primitive
 import qualified Data.List as L
 
 import qualified Data.Vector.Sort.Quick as Q
+import qualified Data.Vector.Sort.Parallel.Quick as PQ
 import qualified Data.Vector.Sort.Merge as M
 import qualified Data.Vector.Sort.Parallel.Merge as PM
 import qualified Data.Vector.Sort.Insertion as I
@@ -18,6 +19,7 @@ implementations = [
   ("insertion", I.sort),
   ("insertion-binary", IB.sort),
   ("quick", Q.sort),
+  ("p-quick", PQ.sort),
   ("merge", M.sort),
   ("p-merge", PM.sort),
   ("tim", T.sort)]

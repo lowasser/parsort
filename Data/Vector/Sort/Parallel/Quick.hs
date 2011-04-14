@@ -1,9 +1,10 @@
 {-# LANGUAGE BangPatterns, ImplicitParams #-}
-module Data.Vector.Sort.Quick where
+module Data.Vector.Sort.Parallel.Quick where
 
-import Debug.Trace
-
-import Control.Monad.ST
+import Control.Monad.Primitive
+import Control.Concurrent
+import Control.Exception
+import System.IO.Unsafe
 
 import Data.Vector.Sort.Types
 import Data.Vector.Sort.Comparator
@@ -19,18 +20,24 @@ sort = sortBy (<=)
 
 {-# INLINE sortBy #-}
 sortBy :: Vector v a => LEq a -> v a -> v a
-sortBy = sortPermM sortByM
+sortBy (<=?) xs = unsafePerformIO $ sortPermIO sortByM (<=?) xs
+
+doBoth :: IO () -> IO () -> IO ()
+doBoth m1 m2 = do
+  lock <- newEmptyMVar
+  _ <- forkIO $ m1 `finally` putMVar lock ()
+  m2
+  takeMVar lock
 
 {-# INLINE sortByM #-}
-sortByM :: (?cmp :: Comparator) => PMVector s Int -> ST s ()
+sortByM :: (?cmp :: Comparator) => PMVector RealWorld Int -> IO ()
 sortByM = let
   qSort xs
-    | n <= 20	= Ins.sortByM xs
-    | otherwise	= pickPivot xs $ \ pivotIndex -> 
+    | n <= 20	= primToPrim $ Ins.sortByM xs
+    | otherwise	= pickPivot xs $ \ pivotIndex ->
 	partition pivotIndex xs $ \ breakIndex ->
 	    let doLeft = qSort (takeM breakIndex xs)
 		doRight = qSort (dropM (breakIndex + 1) xs)
-	    in if breakIndex * 2 <= n then doRight >> doLeft
-		else doLeft >> doRight
+	    in doBoth doLeft doRight
     where n = lengthM xs
   in qSort
