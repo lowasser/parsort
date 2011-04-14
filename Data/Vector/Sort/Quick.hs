@@ -1,43 +1,47 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE BangPatterns, ImplicitParams #-}
 module Data.Vector.Sort.Quick where
 
-import Control.Monad.Primitive
+import Debug.Trace
 
-import Data.Bits
-
-import Data.Vector.Generic.Mutable (unstablePartition)
+import Control.Monad.ST
 
 import Data.Vector.Sort.Types
+import Data.Vector.Sort.Comparator
 import qualified Data.Vector.Sort.Insertion as Ins
-
-import qualified Data.Vector as V
-import qualified Data.Vector.Primitive as P
 
 import Prelude hiding (length, read)
 
-{-# SPECIALIZE sort ::
-      P.Vector Int -> P.Vector Int,
-      (Ord a) => V.Vector a -> V.Vector a #-}
-sort :: (Vector v a, Movable (Mutable v) a, Ord a) => v a -> v a
+{-# INLINE sort #-}
+sort :: (Vector v a, Ord a) => v a -> v a
 sort = sortBy (<=)
 
 {-# INLINE sortBy #-}
-sortBy :: (Vector v a, Movable (Mutable v) a) => LEq a -> v a -> v a
-sortBy (<=?) = modify (sortByM (<=?))
+sortBy :: Vector v a => LEq a -> v a -> v a
+sortBy = sortPermM sortByM
 
 {-# INLINE sortByM #-}
-sortByM :: (PrimMonad m, Movable v a) => LEq a -> v (PrimState m) a -> m ()
-sortByM (<=?) = let
+sortByM :: (?cmp :: Comparator) => PMVector s Int -> ST s ()
+sortByM = let
   qSort xs
-    | n <= 20	= Ins.sortByM (<=?) xs
+    | n <= 3	= Ins.sortByM xs
     | otherwise	= do
-	a <- read xs 0
-	b <- read xs (n `shiftR` 1)
-	c <- read xs (n - 1)
-	let !pivot = medOf3 (<=?) a b c
-	pivotIndex <- unstablePartition (<=? pivot) xs
-	qSort (takeM pivotIndex xs)
-	qSort (dropM pivotIndex xs)
+	let pivotIndex = 0
+	pivot <- read xs pivotIndex
+	let right = n - 1
+	swap xs pivotIndex right
+	let go !i !storeIndex = if i >= right then done storeIndex else do
+	      x <- read xs i
+	      if x <=? pivot then do
+		  swap xs i storeIndex
+		  go (i+1) (storeIndex+1)
+	      else go (i+1) storeIndex
+	    done !storeIndex = do
+	      swap xs storeIndex right
+	      let doLeft = qSort (takeM storeIndex xs)
+		  doRight = qSort (dropM (storeIndex + 1) xs)
+	      if storeIndex * 2 <= n then doRight >> doLeft
+		else doLeft >> doRight
+	go 0 0
     where n = lengthM xs
   in qSort
 

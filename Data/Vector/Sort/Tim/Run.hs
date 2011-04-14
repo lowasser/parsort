@@ -1,6 +1,8 @@
-{-# LANGUAGE BangPatterns, DoAndIfThenElse, RecordWildCards, NamedFieldPuns, CPP, ScopedTypeVariables, FlexibleContexts #-}
+{-# LANGUAGE BangPatterns, DoAndIfThenElse, RecordWildCards, NamedFieldPuns, CPP, ScopedTypeVariables, ImplicitParams #-}
 {-# OPTIONS -funbox-strict-fields #-}
 module Data.Vector.Sort.Tim.Run (countRunAndMakeAscending, merge) where
+
+import Debug.Trace
 
 import Control.Monad.Primitive
 
@@ -8,6 +10,7 @@ import Data.Vector.Generic (freeze, stream, unsafeFreeze)
 import Data.Vector.Generic.Mutable (reverse)
 
 import Data.Vector.Sort.Types
+import Data.Vector.Sort.Comparator
 
 import Data.Vector.Sort.Tim.Hop
 import Data.Vector.Sort.Tim.Constants
@@ -19,12 +22,9 @@ import Foreign.Ptr
 import Prelude hiding (length, read, reverse, mapM_, take, drop)
 import GHC.Exts
 
-{-# SPECIALIZE countRunAndMakeAscending ::
-      PrimMonad m => LEq Int -> PMVector (PrimState m) Int -> (Int -> m b) -> m b,
-      PrimMonad m => LEq a -> VMVector (PrimState m) a -> (Int -> m b) -> m b #-}
-countRunAndMakeAscending :: (PrimMonad m, MVector v a) => 
-  LEq a -> v (PrimState m) a -> (Int -> m b) -> m b
-countRunAndMakeAscending (<=?) xs cont
+{-# INLINE countRunAndMakeAscending #-}
+countRunAndMakeAscending :: (?cmp :: Comparator) => PMVector RealWorld Int -> (Int -> IO b) -> IO b
+countRunAndMakeAscending xs cont
   | n <= 1	= cont n
   | otherwise	= do
       x0 <- read xs 0
@@ -48,7 +48,7 @@ countRunAndMakeAscending (<=?) xs cont
 	  where i' = i + 1
 
 data MergeStatus = Status
-  {count1, count2, cursor1, cursor2, dest :: !Int}
+  {count1, count2, cursor1, cursor2, dest :: !Int} deriving (Show)
 
 #define INCR(field,record,amt) ((\ x -> x{field = field x + amt}) (record))
 
@@ -60,39 +60,24 @@ modifyPtr f ptr = do
 decr :: Ptr Int -> IO ()
 decr = modifyPtr (subtract 1)
 
-{-# RULES
-      "merge/Array" [~0] forall (v :: VVector a) . merge v = mergeV
-      #-}
+merge :: (?cmp :: Comparator) =>
+  Int -> PMVector RealWorld Int -> Int -> Int -> Int -> IO Int
+merge g xs off1 len1 len2
+  | len1 <= len2	= mergeLo g xs off1 len1 len2
+  | otherwise		= mergeHi g xs off1 len1 len2
 
-mergeV :: forall a . Int -> LEq a -> VMVector RealWorld a -> Int -> Int -> Int -> IO Int
-mergeV g (<=?) xs off1 len1 len2
-  | len1 <= len2	= mergeLo v g (<=?) xs off1 len1 len2
-  | otherwise		= mergeHi v g (<=?) xs off1 len1 len2
-  where v = undefined :: VVector a
-
-merge :: (Vector v a, Movable (Mutable v) a) =>
-  v a -> Int -> LEq a -> Mutable v RealWorld a -> Int -> Int -> Int -> IO Int
-merge v g (<=?) xs off1 len1 len2
-  | len1 <= len2	= mergeLo v g (<=?) xs off1 len1 len2
-  | otherwise		= mergeHi v g (<=?) xs off1 len1 len2
-
-assertM :: Monad m => Bool -> m ()
-assertM b = assert b (return ())
-
-{-# INLINE mergeLo #-}
-{-# INLINE mergeHi #-}
 -- Assumes the first element of run 1 is greater than the first element of run 2, and
 -- the last element of run 1 is greater than all elements of run 2.
-mergeLo, mergeHi :: forall v a . (Vector v a, Movable (Mutable v) a)
-    => v a -> Int -> LEq a -> Mutable v RealWorld a -> Int -> Int -> Int -> IO Int
+mergeLo, mergeHi :: (?cmp :: Comparator) =>
+  Int -> PMVector RealWorld Int -> Int -> Int -> Int -> IO Int
 #ifndef ADVANCED
-mergeLo _ g (<=?) xs !off1 len1 len2 = do
+mergeLo g xs !off1 len1 len2 = do
   !run1 <- freeze (takeM len1 (dropM off1 xs))
   let !run2 = takeM len2 (dropM off2 xs)
   let go !i !j !dst
 	| j >= len2	= 
 	    copy (takeM (len1 - i) $ dropM dst xs)
-		(drop i run1 :: v a)
+		(drop i run1 :: PVector Int)
 	| i >= len1	= return ()
 	| otherwise	= do
 	    let x1 = index run1 i
@@ -106,10 +91,10 @@ mergeLo _ g (<=?) xs !off1 len1 len2 = do
   return g
   where !off2 = off1 + len1
 #else
-mergeLo _ !minGallop (<=?) xs !off1 len1 len2 
+mergeLo !minGallop xs !off1 len1 len2 
   | checks $ len2 == 1 = do
       x <- read run2 0
-      move (takeM len1 destArr) (dropM 1 destArr)
+      move (dropM 1 destArr) (takeM len1 destArr)
       write destArr 0 x
       return minGallop
   | len1 == 1	= do
@@ -120,9 +105,9 @@ mergeLo _ !minGallop (<=?) xs !off1 len1 len2
   | otherwise	= alloca $ \ gallopPtr -> do
       poke gallopPtr minGallop
       run1 <- freeze (takeM len1 (dropM off1 xs))
-      let curRun1 :: MergeStatus -> v a
+      let curRun1 :: MergeStatus -> PVector Int
 	  curRun1 s@Status{..} = drop cursor1 run1
-	  curRun2 :: MergeStatus -> Mutable v RealWorld a
+	  curRun2 :: MergeStatus -> PMVector RealWorld Int
 	  curRun2 s@Status{..} = dropM cursor2 run2
 	  curDest s@Status{..} = dropM dest destArr
 	  curs1 s@Status{..} = return (index (curRun1 s) 0)
@@ -135,11 +120,11 @@ mergeLo _ !minGallop (<=?) xs !off1 len1 len2
 	    if breakNow s' then done s' else cont s'
 	  {-# INLINE advance2 #-}
 	  advance2 !s !k cont = do
-	    copyM (takeM k (curDest s)) (takeM k (curRun2 s))
+	    move (takeM k (curDest s)) (takeM k (curRun2 s))
 	    let s' = 
 		  INCR(dest, INCR(cursor2, INCR(count2, s{count1 = 0}, k), k), k)
 	    if breakNow s' then done s' else cont s'
-	  breakNow Status{..} = cursor1 < len1 - 1 && cursor2 < len2 - 1
+	  breakNow Status{..} = not (cursor1 < len1 - 1 && cursor2 < len2)
 	  gallopNow s@Status{..} = do
 	    curGallop <- peek gallopPtr
 	    return (count1 + count2 >= curGallop)
@@ -152,12 +137,12 @@ mergeLo _ !minGallop (<=?) xs !off1 len1 len2
 		else advance2 s 1 step
 	  doGallop1 s = {-# CORE "doGallop1" #-} assert (not (breakNow s)) $ do
 	    key2 <- curs2 s
-	    let !count1' = gallopRight (<=?) key2 (curRun1 s) 0
+	    let !count1' = gallopRight key2 (curRun1 s) 0
 	    advance1 s{count1=0} count1' $ \ s' -> advance2 s' 1 doGallop2
 	  doGallop2 s = {-# CORE "doGallop2" #-} do
 	    key1 <- curs1 s
 	    run2' <- unsafeFreeze (curRun2 s)
-	    let !count2' = gallopLeft (<=?) key1 (run2' :: v a) 0
+	    let !count2' = gallopLeft key1 (run2' :: PVector Int) 0
 	    advance2 s{count2=0} count2' $ \ s' -> advance1 s' 1 $ \ s''@Status{..} -> do
 	      decr gallopPtr
 	      if count1 >= mIN_GALLOP || count2 >= mIN_GALLOP
@@ -169,11 +154,10 @@ mergeLo _ !minGallop (<=?) xs !off1 len1 len2
 	  done s@Status{..} = {-# CORE "done" #-} case (len1 - cursor1, len2 - cursor2) of
 	      (1, l2) -> assert (l2 > 0) $ do
 		move (takeM l2 $ curDest s) (curRun2 s)
-		write xs (off1 + len1 + len2 - 1) (index (curRun1 s) 0)
+		write destArr (len1 + len2 - 1) (index (curRun1 s) 0)
 	      (l1, 0) -> assert (l1 > 1) $ copy (curDest s) (curRun1 s)
-	      _ -> fail "Method invariant violated!"
-      write destArr 0 =<< read run2 0
-      step Status{count1 = 0, count2 = 0, cursor1 = 0, cursor2 = 1, dest = 1}
+	      _ -> fail ("Method invariant violated: " ++ show (cursor1, len1, cursor2, len2))
+      advance2 Status{count1 = 0, count2 = 0, cursor1 = 0, cursor2 = 0, dest = 0} 1 step
       g <- peek gallopPtr
       return (max g 1)
   where	!off2 = off1 + len1
@@ -182,11 +166,11 @@ mergeLo _ !minGallop (<=?) xs !off1 len1 len2
 	!destArr = takeM (len1 + len2) (dropM off1 xs)
 #endif
 
-mergeHi _ g (<=?) xs off1 len1 !len2 = do
+mergeHi g xs off1 len1 !len2 = do
   run2 <- freeze (takeM len2 $ dropM off2 xs)
   let run1 = takeM len1 $ dropM off1 xs
   let go !i !j !dst
-	| i < 0	= copy (takeM (j+1) $ dropM off1 xs) (take (j+1) run2 :: v a)
+	| i < 0	= copy (takeM (j+1) $ dropM off1 xs) (take (j+1) run2 :: PVector Int)
 	| j < 0	= return ()
 	| otherwise = do
 	    x1 <- read run1 i

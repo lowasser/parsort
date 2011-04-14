@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, ScopedTypeVariables, MultiParamTypeClasses, FlexibleContexts, FlexibleInstances, UndecidableInstances #-}
+{-# LANGUAGE ImplicitParams #-}
 module Data.Vector.Sort.Insertion.Binary where
 
 import Control.Monad
@@ -7,23 +7,21 @@ import Control.Monad.Primitive
 import Data.Bits
 
 import Data.Vector.Sort.Types
+import Data.Vector.Sort.Comparator
 
 import Prelude hiding (length, take, drop, read)
 
-{-# SPECIALIZE sort :: 
-      PVector Int -> PVector Int,
-      Ord a => VVector a -> VVector a #-}
 {-# INLINE sort #-}
-sort :: (Vector v a, Movable (Mutable v) a, Ord a) => v a -> v a
+sort :: (Vector v a, Ord a) => v a -> v a
 sort = sortBy (<=)
 
 {-# INLINE sortBy #-}
-sortBy :: (Vector v a, Movable (Mutable v) a) => (a -> a -> Bool) -> v a -> v a
-sortBy (<=) = modify (\ xs -> sortByM (<=) xs 1)
+sortBy :: Vector v a => LEq a -> v a -> v a
+sortBy = sortPermM (\ xs -> sortByM xs 1)
 
 {-# INLINE sortByM #-}
-sortByM :: (Movable v a, PrimMonad m) => LEq a -> v (PrimState m) a -> Int -> m ()
-sortByM (<=?) xs start = run (max start 1) where
+sortByM :: (?cmp :: Comparator, PrimMonad m) => PMVector (PrimState m) Int -> Int -> m ()
+sortByM xs start = run (max start 1) where
   !n = lengthM xs
   binarySearch key l u cont = bin l u where
     bin l u
