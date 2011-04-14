@@ -26,7 +26,7 @@ sortByM xs start = run (max start 1) where
     bin l u
       | u <= l	= cont l
       | otherwise = do
-	  let k = (u + l) `shiftR` 1
+	  let k = l + (u - l) `shiftR` 1
 	  x <- read xs k
 	  if x <=? key then bin (k+1) u else bin l k
   run start = when (start < n) $ do
