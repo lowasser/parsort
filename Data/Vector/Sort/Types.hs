@@ -3,7 +3,7 @@ module Data.Vector.Sort.Types
   (LEq, VVector, VMVector, PVector, PMVector, Mov.Movable,
   PrimMonad, PrimState,
   Vector, MVector, Mutable, G.modify, G.length, lengthM,
-  index, read, write, take, drop, takeM, dropM, swap,
+  index, indexM, read, write, take, drop, takeM, dropM, swap,
   copy, copyM, move, backpermute,
   checkIndex, checkRange, checkRangeM, assert, assertM
   ) where
