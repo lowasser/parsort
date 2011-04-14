@@ -4,7 +4,7 @@ module Data.Vector.Sort.Types
   PrimMonad, PrimState,
   Vector, MVector, Mutable, G.modify, G.length, lengthM,
   index, indexM, read, write, take, drop, takeM, dropM, swap,
-  copy, copyM, move, backpermute,
+  copy, copyM, move, moveBy, backpermute,
   checkIndex, checkRange, checkRangeM, assert, assertM
   ) where
 
@@ -106,3 +106,9 @@ checkRange i j xs z = asserter (0 <= i && i <= j && j <= length xs)
 
 assertM :: Monad m => Bool -> m ()
 assertM b = assert b (return ())
+
+{-# INLINE moveBy #-}
+moveBy :: (Mov.Movable v a, PrimMonad m) => v (PrimState m) a -> Int -> Int -> Int -> m ()
+moveBy mv off len dist =
+  move (takeM len (dropM (off + dist) mv))
+	(takeM len (dropM off mv))

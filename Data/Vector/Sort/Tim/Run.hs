@@ -94,12 +94,12 @@ mergeLo g xs !off1 len1 len2 = do
 mergeLo !minGallop xs !off1 len1 len2 
   | checks $ len2 == 1 = do
       x <- read run2 0
-      move (dropM 1 destArr) (takeM len1 destArr)
+      moveBy destArr 0 len1 1
       write destArr 0 x
       return minGallop
   | len1 == 1	= do
       x <- read xs off1
-      move (takeM len2 destArr) run2
+      moveBy destArr 1 len2 (-1)
       write destArr len2 x
       return minGallop
   | otherwise	= alloca $ \ gallopPtr -> do

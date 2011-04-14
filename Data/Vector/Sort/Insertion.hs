@@ -17,7 +17,6 @@ sort = sortBy (<=)
 sortBy :: Vector v a => LEq a -> v a -> v a
 sortBy = sortPermM sortByM
 
-{-# INLINE sortByM #-}
 sortByM :: (?cmp :: Comparator) => PMVector s Int -> ST s ()
 sortByM xs = run 1 where
   !n = lengthM xs
@@ -29,9 +28,7 @@ sortByM xs = run 1 where
 		y <- read xs j
 		if y <=? x then done (j+1) else go (j-1)
 	  done j = do
-	    let movSrc = dropM j (takeM i xs)
-	    let movDst = dropM (j+1) (takeM (i+1) xs)
-	    move movDst movSrc
+	    moveBy xs j (i-j) 1
 	    write xs j x
+	    run (i+1)
       go (i-1)
-      run (i+1)

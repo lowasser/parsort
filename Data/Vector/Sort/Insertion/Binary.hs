@@ -2,7 +2,7 @@
 module Data.Vector.Sort.Insertion.Binary where
 
 import Control.Monad
-import Control.Monad.Primitive
+import Control.Monad.ST
 
 import Data.Bits
 
@@ -19,8 +19,7 @@ sort = sortBy (<=)
 sortBy :: Vector v a => LEq a -> v a -> v a
 sortBy = sortPermM (\ xs -> sortByM xs 1)
 
-{-# INLINE sortByM #-}
-sortByM :: (?cmp :: Comparator, PrimMonad m) => PMVector (PrimState m) Int -> Int -> m ()
+sortByM :: (?cmp :: Comparator) => PMVector s Int -> Int -> ST s ()
 sortByM xs start = run (max start 1) where
   !n = lengthM xs
   binarySearch key l u cont = bin l u where
@@ -33,9 +32,6 @@ sortByM xs start = run (max start 1) where
   run start = when (start < n) $ do
     x <- read xs start
     binarySearch x 0 start $ \ k -> do
-      let m = start - k
-      let moveDst = takeM m (dropM (k+1) xs)
-      let moveSrc = takeM m (dropM k xs)
-      move moveDst moveSrc
+      moveBy xs k (start-k) 1
       write xs k x
       run (start+1)
