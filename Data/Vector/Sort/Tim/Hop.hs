@@ -14,22 +14,23 @@ import Prelude hiding (length, take, drop)
 offCont :: Int -> (Int -> Int -> a) -> Int -> Int -> a
 offCont !off cont a b = cont (a + off) (b + off)
 
-gallopLeft, gallopRight :: (?cmp :: Comparator) => Int -> PVector Int -> Int -> Int
+gallopLeft, gallopRight :: (?cmp :: Comparator) => Elem -> PVector Elem -> Int -> Int
 gallopLeft !key !xs !hint
-  | checkIndex hint xs $ key <=? index xs hint
+  | assert (goodIndex hint xs) $ key <=? index xs hint
   		= hopLeft (key <=?) (take hint xs) go
   | otherwise	= hopRight (key >?) (drop hint xs) (offCont hint go)
   where	go l r = binarySearchL (key <=?) xs (l+1) r
 
-gallopRight !key !xs !hint = 
-  let ?cmp = mkComparator (\ a b -> not $ runComparator cmp b a)
-    in gallopLeft key xs hint
-  where cmp = ?cmp
+gallopRight !key !xs !hint
+  | assert  (goodIndex hint xs) $ key <? index xs hint
+  		= hopLeft (key <?) (take hint xs) go
+  | otherwise	= hopRight (key >=?) (drop hint xs) (offCont hint go)
+  where	go l r = binarySearchL (key <?) xs (l+1) r
 
 {-# INLINE binarySearchL #-}
 binarySearchL :: Vector v a => (a -> Bool) -> v a -> Int -> Int -> Int
 binarySearchL p xs = bin where
-  bin !lo !hi = checkRange lo hi xs $
+  bin !lo !hi = assert (goodRange lo hi xs) $
     if lo < hi then
 	let !m = lo + (hi - lo) `shiftR` 1 in
 	  if p (index xs m) then bin lo m else bin (m+1) hi

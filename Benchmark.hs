@@ -1,10 +1,16 @@
 module Benchmark where
 
-import Criterion.Main
+import Criterion
+import Progression.Main
 import System.Random.MWC
+import System.Environment
+import System.Console.GetOpt
+import Debug.Trace
 
+import Data.List(span, intercalate)
 import Data.Vector (Vector, convert, replicateM)
 
+import Data.Vector.Sort.Constants
 import qualified Data.Vector.Sort.Insertion as Ins
 import qualified Data.Vector.Sort.Insertion.Binary as BI
 import qualified Data.Vector.Sort.Merge as Merge
@@ -26,9 +32,22 @@ benchForSize :: GenIO -> Int -> IO Benchmark
 benchForSize g n = do
   xs0 <- uniformVector g n
   let !xs = convert xs0 :: Vector Int
-  let slowTests = if n > 1000 then [] else [binaryInsertion, insertion]
-  let fastTests = if n <= 20 then [] else [merge, mergePar, tim, quick, quickPar]
-  return $ bgroup (show n) (map ($ xs) (slowTests ++ fastTests))
+  let tests1 = if n <= sMALL_SORT_THRESHOLD then [] else [merge, tim, quick]
+  let tests2 = if n > 1000 then [] else [binaryInsertion, insertion]
+  let tests3 = if n <= sEQUENTIAL_SORT_THRESHOLD then [] else [mergePar, quickPar]
+  return $ bgroup (show n) (map ($ xs) (tests1 ++ tests2 ++ tests3))
 
-main = withSystemRandom $ \ g ->
-  defaultMain =<< mapM (benchForSize g) [10, 100, 1000, 100000]
+main = withSystemRandom $ \ g -> do
+  args <- getArgs
+  let (ourArgs, otherArgs) = span (/= "--") args
+  let sizes = process ourArgs
+  let progressionArgs = (["--prefixes=" ++ intercalate "," (map show sizes)] ++ tail otherArgs)
+  traceShow progressionArgs $ withArgs progressionArgs (defaultMain . bgroup "" =<< mapM (benchForSize g) sizes)
+
+process :: [String] -> [Int]
+process args = case getOpt Permute options args of
+  (sizes, _, []) -> concat sizes
+  (_, _, errs) -> fail (concat errs ++ usageInfo "Benchmark" options)
+
+options :: [OptDescr [Int]]
+options = [Option "n" ["n"] (ReqArg (\ str -> read ("[" ++ str ++ "]")) "benchmark size list") "benchmark sizes"]

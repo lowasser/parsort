@@ -46,21 +46,9 @@ moveV !dst@(V.MVector dOff _ _) !src@(V.MVector sOff sLen _)
 instance U.Unbox a => Movable U.MVector a
 
 instance Prim a => Movable P.MVector a where
-  {-# SPECIALIZE instance Movable P.MVector Int #-}
-  basicUnsafeMove dst@(P.MVector dstOff _ dstArr) src@(P.MVector srcOff srcLen srcArr) = case srcLen of
-    0	-> return ()
-    1	-> unsafeRead src 0 >>= unsafeWrite dst 0
-    2	-> do	x <- unsafeRead src 0
-		y <- unsafeRead src 1
-		unsafeWrite dst 0 x
-		unsafeWrite dst 1 y
-    3	-> do	x <- unsafeRead src 0
-		y <- unsafeRead src 1
-		z <- unsafeRead src 2
-		unsafeWrite dst 0 x
-		unsafeWrite dst 1 y
-		unsafeWrite dst 2 z
-    _ -> memmoveByteArray dstArr (dstOff * sz) srcArr (srcOff * sz) (srcLen * sz)
+  {-# INLINE basicUnsafeMove #-}
+  basicUnsafeMove dst@(P.MVector dstOff _ dstArr) src@(P.MVector srcOff srcLen srcArr) = 
+    memmoveByteArray dstArr (dstOff * sz) srcArr (srcOff * sz) (srcLen * sz)
     where sz = sizeOf (undefined :: a)
 
 instance Storable a => Movable S.MVector a where

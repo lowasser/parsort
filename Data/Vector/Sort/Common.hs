@@ -15,8 +15,8 @@ import Data.Vector.Sort.Constants
 
 import qualified Data.Vector.Sort.Insertion.Binary as BinIns
 
-type SequentialSort = forall s . PMVector s Int -> ST s ()
-type ParallelSort = PMVector RealWorld Int -> IO ()
+type SequentialSort = forall s . PMVector s Elem -> ST s ()
+type ParallelSort = PMVector RealWorld Elem -> IO ()
 
 {-# INLINE parallelSort #-}
 parallelSort :: (?cmp :: Comparator) =>

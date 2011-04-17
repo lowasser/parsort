@@ -25,27 +25,27 @@ newtype Comparator = Cmp {runCmp :: Int# -> Int# -> Bool}
 toComparator :: Vector v a => LEq a -> v a -> Comparator
 toComparator (<=?) !xs = mkComparator (\ i j -> index xs i <=? index xs j)
 
-mkComparator :: LEq Int -> Comparator
+mkComparator :: LEq Elem -> Comparator
 mkComparator (<=?) = Cmp $ \ i# j# -> I# i# <=? I# j#
 
-runComparator :: Comparator -> LEq Int
+runComparator :: Comparator -> LEq Elem
 runComparator cmp (I# i#) (I# j#) = runCmp cmp i# j#
 
-(<=?), (<?), (>=?), (>?) :: (?cmp :: Comparator) => Int -> Int -> Bool
+(<=?), (<?), (>=?), (>?) :: (?cmp :: Comparator) => Elem -> Elem -> Bool
 (<=?) = runComparator ?cmp
 a <? b = not (a >=? b)
 a >=? b = b <=? a
 a >? b = b <? a
 
 {-# INLINE [0] sortPerm #-}
-sortPerm :: Vector v a => ((?cmp :: Comparator) => PVector Int -> PVector Int) -> LEq a -> v a -> v a
+sortPerm :: Vector v a => ((?cmp :: Comparator) => PVector Elem -> PVector Elem) -> LEq a -> v a -> v a
 sortPerm sortAlg (<=?) xs =
   let !n = length xs; perm = sortAlg (enumFromN 0 n) in
 	backpermute xs perm
     where ?cmp = toComparator (<=?) xs
 
 {-# INLINE [0] sortPermM #-}
-sortPermM :: Vector v a => (forall s . (?cmp :: Comparator) => PMVector s Int -> ST s ())
+sortPermM :: Vector v a => (forall s . (?cmp :: Comparator) => PMVector s Elem -> ST s ())
   -> LEq a -> v a -> v a
 sortPermM sortAlg (<=?) xs = 
   let perm = create $ do
@@ -56,7 +56,7 @@ sortPermM sortAlg (<=?) xs =
   where ?cmp = toComparator (<=?) xs
 
 {-# INLINE [0] sortPermIO #-}
-sortPermIO :: Vector v a => ((?cmp :: Comparator) => PMVector RealWorld Int -> IO ())
+sortPermIO :: Vector v a => ((?cmp :: Comparator) => PMVector RealWorld Elem -> IO ())
   -> LEq a -> v a -> IO (v a)
 sortPermIO sortAlg (<=?) xs = do
 	pv <- M.unstream $ Stream.enumFromStepN 0 1 (length xs)

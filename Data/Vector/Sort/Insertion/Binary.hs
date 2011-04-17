@@ -7,7 +7,6 @@ import Data.Bits
 
 import Data.Vector.Sort.Types
 import Data.Vector.Sort.Comparator
-import Data.Vector.Algorithms.Optimal
 
 import Prelude hiding (length, take, drop, read)
 
@@ -20,13 +19,7 @@ sortBy :: Vector v a => LEq a -> v a -> v a
 sortBy = sortPermM (\ xs -> sortByM xs 1)
 
 sortByM :: (?cmp :: Comparator) => PMVector s Int -> Int -> ST s ()
-sortByM xs start = let start' = start - 1 in case lengthM xs - start' of
-  0	-> return ()
-  1	-> return ()
-  2	-> sort2ByOffset comp xs start'
-  3	-> sort3ByOffset comp xs start'
-  4	-> sort4ByOffset comp xs start'
-  _	-> sort4ByOffset comp xs start' >> run (start + 4) where
+sortByM xs start = run start where
     !n = lengthM xs
     binarySearch key l u cont = bin l u where
       bin l u
@@ -41,4 +34,3 @@ sortByM xs start = let start' = start - 1 in case lengthM xs - start' of
 	moveBy xs k (start-k) 1
 	write xs k x
 	run (start+1)
-  where comp x y = if x <=? y then LT else GT
