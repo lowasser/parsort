@@ -20,7 +20,7 @@ type ParallelSort = PMVector RealWorld Elem -> IO ()
 
 {-# INLINE parallelSort #-}
 parallelSort :: (?cmp :: Comparator) =>
-  SequentialSort -> ParallelSort -> ParallelSort
+  (PMVector RealWorld Elem -> ST RealWorld ()) -> ParallelSort -> ParallelSort
 parallelSort seqImpl parImpl xs
   | lengthM xs <= sEQUENTIAL_SORT_THRESHOLD
 	= primToPrim $ seqImpl xs
