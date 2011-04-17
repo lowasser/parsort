@@ -6,9 +6,6 @@ Benchmark :
 		-ddump-minimal-imports -Wall -fno-warn-name-shadowing -odir bench -I. \
 		 Benchmark -o Benchmark -main-is Benchmark -threaded -rtsopts $(GHC_OPTS)
 
-bench : Benchmark
-	./Benchmark +RTS -N2 -sstderr -K64m -RTS -s 10
-
 test :
 	ghc --make Tests -o Tests -main-is Tests -fforce-recomp \
 	  -ddump-minimal-imports -Wall -fno-warn-name-shadowing -fno-warn-unused-do-bind \

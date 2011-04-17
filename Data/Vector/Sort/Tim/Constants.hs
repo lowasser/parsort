@@ -6,10 +6,10 @@ import Control.Exception.Base
 import Data.Bits
 
 mIN_GALLOP :: Int
-mIN_GALLOP = 2
+mIN_GALLOP = 7
 
 mIN_MERGE :: Int
-mIN_MERGE = 3
+mIN_MERGE = 32
 
 minRunLength :: Int -> Int
 minRunLength n = assert (n >= 0) $ go n 0 where
