@@ -3,8 +3,6 @@ module Data.Vector.Sort.Heap.Nary (sortBy, sortByM) where
 
 import Control.Monad
 
-import Data.Bits
-import qualified Data.Vector.Primitive as P
 import Data.Vector.Sort.Common
 
 import Prelude hiding (read)
@@ -26,22 +24,19 @@ heapify xs = go_heapify ((lengthM xs - 1) `quot` arity) where
     siftTop xs k =<< read xs k
     go_heapify (k-1)
 
-maxIndex :: (?cmp :: Comparator) => PMVector s Elem -> Int -> Int -> ST s Int
-maxIndex xs i j = do
-  xi <- read xs i
-  xj <- read xs j
-  if xj <=? xi then return i else return j
+maxInRange :: (?cmp :: Comparator) => PMVector s Elem -> Int -> Int -> (Int -> Elem -> ST s a) -> ST s a
+maxInRange !xs !l !r cont = do
+  xl <- read xs l
+  go l xl (l+1)
+  where	go !c !xc !i
+	  | i <= r = do	xi <- read xs i
+			if xi <=? xc then go c xc (i+1) else go i xi (i+1)
+	  | otherwise = cont c xc
 
 siftTop :: (?cmp :: Comparator) => PMVector s Elem -> Int -> Elem -> ST s ()
 siftTop !xs k x
-  | childL < n = do
-      minChild <- P.fold1M' (maxIndex xs) (P.enumFromN child1 arity)
-      xC <- read xs minChild
-      if xC <=? x then write xs k x else write xs k xC >> siftTop xs minChild x
-  | child1 < n = do
-      minChild <- P.fold1M' (maxIndex xs) (P.enumFromN child1 (n - child1))
-      xC <- read xs minChild
-      if xC <=? x then write xs k x else write xs k xC >> write xs minChild x
+  | child1 < n = maxInRange xs child1 (min (n-1) childL) $ \ !c !xC ->
+      if xC <=? x then write xs k x else write xs k xC >> siftTop xs c x
   | otherwise = write xs k x
   where n = lengthM xs
 	child1 = arity * k + 1
