@@ -7,6 +7,8 @@ import Data.Bits
 import qualified Data.Vector.Primitive as P
 import Data.Vector.Sort.Common
 
+import Prelude hiding (read)
+
 arity :: Int
 arity = 3
 
