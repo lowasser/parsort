@@ -13,16 +13,18 @@ import qualified Data.Vector.Sort.Parallel.Merge as PM
 import qualified Data.Vector.Sort.Insertion as I
 import qualified Data.Vector.Sort.Insertion.Binary as IB
 import qualified Data.Vector.Sort.Tim as T
+import qualified Data.Vector.Sort.Heap.Nary as H
 
 implementations :: [(String, Vector Int -> Vector Int)]
 implementations = [
-  ("insertion", I.sort),
-  ("insertion-binary", IB.sort),
-  ("quick", Q.sort),
-  ("p-quick", PQ.sort),
-  ("merge", M.sort),
-  ("p-merge", PM.sort),
-  ("tim", T.sort)]
+  ("insertion", I.sortBy (<=)),
+  ("insertion-binary", IB.sortBy (<=) ),
+  ("quick", Q.sortBy (<=)),
+  ("p-quick", PQ.sortBy (<=)),
+  ("merge", M.sortBy (<=)),
+  ("p-merge", PM.sortBy (<=)),
+  ("tim", T.sortBy (<=)),
+  ("heap", H.sortBy (<=))]
 
 main = quickCheck (\ xs -> conjoin
     [printTestCase sortImpl $ L.sort xs == toList (theSort (fromList xs))
