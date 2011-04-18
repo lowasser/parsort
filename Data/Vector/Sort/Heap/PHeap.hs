@@ -6,7 +6,7 @@ import Data.Vector.Sort.Common
 import Data.Vector.Fusion.Stream.Monadic
 import Data.Vector.Fusion.Stream.Size
 
-data PHeap = PHeap !Int PForest
+data PHeap = PHeap !Elem PForest
 data PForest = Cons !PHeap PForest | Nil
 
 insert :: (?cmp :: Comparator) => PHeap -> Elem -> PHeap
@@ -21,7 +21,7 @@ combine Nil = Empty
 combine (Cons t Nil) = Queue t
 combine (Cons t1 (Cons t2 ts)) = Queue (mergeAll (merge t1 t2) (merge2 ts))
 
-mergeAll :: PHeap -> PForest -> PHeap
+mergeAll :: (?cmp :: Comparator) => PHeap -> PForest -> PHeap
 mergeAll !t1 (Cons t2 ts) = mergeAll (merge t1 t2) ts
 mergeAll t Nil = t
 
@@ -36,10 +36,12 @@ t1@(PHeap x1 ts1) `merge` t2@(PHeap x2 ts2)
 
 {-# INLINE fromStream #-}
 fromStream :: (?cmp :: Comparator, Monad m) => Stream m Elem -> m PQueue
-fromStream strm = foldl' insert Empty strm
+fromStream strm = foldl' insertQ Empty strm where
+  insertQ Empty x = Queue (PHeap x Nil)
+  insertQ (Queue q) x = Queue (insert q x)
 
 {-# INLINE stream #-}
-stream :: Monad m => Int -> PQueue -> Stream m Elem
+stream :: (?cmp :: Comparator, Monad m) => Int -> PQueue -> Stream m Elem
 stream !n !q = Stream step q (Exact n) where
   step Empty = return Done
   step (Queue (PHeap x ts)) = return (Yield x (combine ts))

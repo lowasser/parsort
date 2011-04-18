@@ -1,11 +1,14 @@
-{-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE ImplicitParams, BangPatterns #-}
 module Data.Vector.Sort.Heap.Pairing (sortBy) where
 
 import Control.Monad.ST
 
 import Data.Vector.Sort.Common
+import Data.Vector.Generic.Mutable (fill)
 import Data.Vector.Fusion.Stream.Monadic
 import Data.Vector.Sort.Heap.PHeap
+
+import Prelude hiding (read, mapM)
 
 {-# INLINE sortBy #-}
 sortBy :: Vector v a => LEq a -> v a -> v a
@@ -17,4 +20,5 @@ mstream !xs = mapM (read xs) (enumFromStepN 0 1 (lengthM xs))
 sortByM :: (?cmp :: Comparator) => PMVector s Elem -> ST s ()
 sortByM = sequentialSort $ \ xs -> do
   !heap <- fromStream (mstream xs)
-  fill xs (stream heap)
+  fill xs (stream (lengthM xs) heap)
+  return ()
