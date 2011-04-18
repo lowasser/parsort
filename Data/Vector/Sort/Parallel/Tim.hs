@@ -33,7 +33,7 @@ sortBy :: Vector v a => LEq a -> v a -> v a
 sortBy (<=?) xs = unsafePerformIO (sortPermIO sortVector (<=?) xs)
 
 sortVector :: (?cmp :: Comparator) => PMVector RealWorld Int -> IO ()
-sortVector = parallelSort (primToPrim . Seq.sortVector) sortByM
+sortVector = parallelSort (Seq.sortVector) sortByM
 
 {-# INLINE sortByM #-}
 sortByM :: (?cmp :: Comparator) => PMVector RealWorld Int -> IO ()
@@ -47,9 +47,11 @@ sortByM !xs = do
       | off >= n	= return stack
       | otherwise	= {-# CORE "consumeRuns" #-} countRunAndMakeAscending (dropM off xs) $ \ runLen -> do
 	  let force = min (n - off) minRun
-	  primToPrim $ BinIns.sortByM (takeM force (dropM off xs)) runLen
+	  lock <- newEmptyMVar
+	  forkIO $ do
+	    primToPrim $ BinIns.sortByM (sliceM off force xs) runLen
+	    putMVar lock ()
 	  let runLength = max runLen force
-	  lock <- newMVar ()
 	  let stack' = stack :> Run{runOffset = off, runLength, lock}
 	  stack'' <- mergeCollapse stack'
 	  consumeRuns stack'' (off + runLength)
@@ -73,7 +75,7 @@ sortByM !xs = do
     mergeForceCollapse (End :> Run _ _ lock) = takeMVar lock
     mergeForceCollapse End = return ()
 
-    mergeRuns r1@(Run off1 len1 lock1) r2@(Run _ len2 lock2) =
+    mergeRuns r1@(Run off1 len1 lock1) r2@(Run _ len2 lock2) = {-# SCC "mergeRuns" #-}
       assert (not (nullRun r1) && not (nullRun r2) && consecutive r1 r2) $ do
 	lock <- newEmptyMVar
 	forkIO $ do

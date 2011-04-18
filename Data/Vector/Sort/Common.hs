@@ -1,4 +1,4 @@
-{-# LANGUAGE Rank2Types, ImplicitParams #-}
+{-# LANGUAGE Rank2Types, ImplicitParams, TypeFamilies #-}
 module Data.Vector.Sort.Common (
   module Data.Vector.Sort.Types,
   module Data.Vector.Sort.Comparator,
@@ -15,12 +15,11 @@ import Data.Vector.Sort.Constants
 
 import qualified Data.Vector.Sort.Insertion.Binary as BinIns
 
-type SequentialSort = forall s . PMVector s Elem -> ST s ()
 type ParallelSort = PMVector RealWorld Elem -> IO ()
 
 {-# INLINE parallelSort #-}
-parallelSort :: (?cmp :: Comparator) =>
-  (PMVector RealWorld Elem -> ST RealWorld ()) -> ParallelSort -> ParallelSort
+parallelSort :: (?cmp :: Comparator, PrimMonad m, PrimState m ~ RealWorld) =>
+  (PMVector (PrimState m) Elem -> m ()) -> ParallelSort -> ParallelSort
 parallelSort seqImpl parImpl xs
   | lengthM xs <= sEQUENTIAL_SORT_THRESHOLD
 	= primToPrim $ seqImpl xs
@@ -28,9 +27,10 @@ parallelSort seqImpl parImpl xs
   	= parImpl xs
 
 {-# INLINE sequentialSort #-}
-sequentialSort :: (?cmp :: Comparator) => SequentialSort -> SequentialSort
+sequentialSort :: (?cmp :: Comparator, PrimMonad m) => 
+  (PMVector (PrimState m) Elem -> m ()) -> PMVector (PrimState m) Elem -> m ()
 sequentialSort seqImpl xs
   | lengthM xs <= sMALL_SORT_THRESHOLD
-      = BinIns.sortByM xs 1
+      = primToPrim $ BinIns.sortByM xs 1
   | otherwise
       = seqImpl xs
