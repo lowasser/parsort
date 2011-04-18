@@ -1,7 +1,12 @@
+{-# LANGUAGE CPP #-}
 module Data.Vector.Sort.Constants where
 
 sMALL_SORT_THRESHOLD :: Int
+#ifdef DEBUG
+sMALL_SORT_THRESHOLD = 20
+#else
 sMALL_SORT_THRESHOLD = 2
+#endif
 
 sEQUENTIAL_SORT_THRESHOLD :: Int
 sEQUENTIAL_SORT_THRESHOLD = 1000
