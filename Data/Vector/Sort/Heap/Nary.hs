@@ -3,8 +3,6 @@ module Data.Vector.Sort.Heap.Nary (sortBy) where
 
 import Control.Monad
 
-import Debug.Trace
-
 import Data.Bits
 import qualified Data.Vector.Primitive as P
 import Data.Vector.Sort.Common
