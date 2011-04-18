@@ -14,27 +14,26 @@ import Prelude hiding (read)
 -- | Returns the index of a chosen pivot.
 pickPivot :: (?cmp :: Comparator, PrimMonad m) => PMVector (PrimState m) Int -> (Int -> m a) -> m a
 pickPivot xs cont0
-  | n < 40 = let
-      i0 = 0
-      i1 = n `shiftR` 1
-      i2 = n - 1
-      in medOf3 i0 i1 i2 cont0
+  | n < 40 = medOf3 l0 m0 r0 cont0
   | otherwise = let
       off = n `shiftR` 3
-      i0 = 0
-      i1 = off
-      i2 = 2 * off
-      i3 = 3 * off
-      i4 = 4 * off
-      i5 = 5 * off
-      i6 = 6 * off
-      i7 = 7 * off
-      i8 = n - 1
+      i0 = l0
+      i1 = i0 + off
+      i2 = i1 + off
+      i3 = m0 - off
+      i4 = m0
+      i5 = m0 + off
+      i6 = i7 - off
+      i7 = i8 - off
+      i8 = r0
       in medOf3 i0 i1 i2 $ \ !l ->
 	  medOf3 i3 i4 i5 $ \ !m ->
 	  medOf3 i6 i7 i8 $ \ !r ->
 	  medOf3 l m r cont0
   where	n = lengthM xs
+	l0 = 0
+	m0 = n `shiftR` 1
+	r0 = n - 1
 	{-# INLINE medOf3 #-}
 	medOf3 i j k cont = do
 	  a <- read xs i
