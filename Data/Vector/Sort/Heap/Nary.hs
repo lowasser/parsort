@@ -4,7 +4,6 @@ module Data.Vector.Sort.Heap.Nary (sortBy) where
 import Control.Monad
 
 import Data.Bits
-import Data.Vector.Generic (foldl1M')
 import qualified Data.Vector.Primitive as P
 import Data.Vector.Sort.Common
 
@@ -30,7 +29,7 @@ heapify xs = go_heapify ((lengthM xs - 1) `quot` arity) where
 siftTop :: (?cmp :: Comparator) => PMVector s Elem -> Int -> Elem -> ST s ()
 siftTop !xs k x
   | arity * k + 1 < lengthM xs = do
-      minChild <- foldl1M' (\ i j -> do
+      minChild <- P.fold1M' (\ i j -> do
 	  xi <- read xs i
 	  xj <- read xs j
 	  if xi <=? xj then return i else return j) (P.takeWhile (< lengthM xs) $ P.enumFromN (arity * k + 1) arity)
