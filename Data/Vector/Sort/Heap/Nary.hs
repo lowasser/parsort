@@ -1,4 +1,4 @@
-{-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE ImplicitParams, BangPatterns #-}
 module Data.Vector.Sort.Heap.Nary (sortBy) where
 
 import Control.Monad
