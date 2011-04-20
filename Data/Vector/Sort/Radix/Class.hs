@@ -6,7 +6,6 @@ import Data.Int
 import Data.Word
 import Data.Primitive.Types
 
-import GHC.Int
 import GHC.Word
 import GHC.IntWord64
 import GHC.Exts
