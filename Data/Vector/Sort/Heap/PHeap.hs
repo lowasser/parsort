@@ -1,10 +1,9 @@
 {-# LANGUAGE BangPatterns, ImplicitParams #-}
 {-# OPTIONS -funbox-strict-fields #-}
-module Data.Vector.Sort.Heap.PHeap (fromStream, stream) where
+module Data.Vector.Sort.Heap.PHeap (heapify, unheap) where
 
 import Data.Vector.Sort.Common
-import Data.Vector.Fusion.Stream.Monadic
-import Data.Vector.Fusion.Stream.Size
+import Data.Vector.Fusion.Stream
 
 data PHeap = PHeap !Elem PForest
 data PForest = Cons !PHeap PForest | Nil
@@ -34,14 +33,14 @@ t1@(PHeap x1 ts1) `merge` t2@(PHeap x2 ts2)
   | x1 <=? x2 = PHeap x1 (Cons t2 ts1)
   | otherwise = PHeap x2 (Cons t1 ts2)
 
-{-# INLINE fromStream #-}
-fromStream :: (?cmp :: Comparator, Monad m) => Stream m Elem -> m PQueue
-fromStream strm = foldl' insertQ Empty strm where
+{-# INLINE heapify #-}
+heapify :: (?cmp :: Comparator) => Stream Elem -> PQueue
+heapify strm = foldl' insertQ Empty strm where
   insertQ Empty x = Queue (PHeap x Nil)
   insertQ (Queue q) x = Queue (insert q x)
 
-{-# INLINE stream #-}
-stream :: (?cmp :: Comparator, Monad m) => Int -> PQueue -> Stream m Elem
-stream !n !q = Stream step q (Exact n) where
-  step Empty = return Done
-  step (Queue (PHeap x ts)) = return (Yield x (combine ts))
+{-# INLINE unheap #-}
+unheap :: (?cmp :: Comparator) => Int -> PQueue -> Stream Elem
+unheap n q = unfoldrN n step q where
+  step Empty = Nothing
+  step (Queue (PHeap x ts)) = Just (x, combine ts)

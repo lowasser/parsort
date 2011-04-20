@@ -13,7 +13,7 @@ import qualified Data.Vector.Sort.Parallel.Merge as PM
 import qualified Data.Vector.Sort.Insertion as I
 import qualified Data.Vector.Sort.Insertion.Binary as IB
 import qualified Data.Vector.Sort.Tim as T
-import qualified Data.Vector.Sort.Heap.Nary as H
+import qualified Data.Vector.Sort.Heap.Binary as H
 import qualified Data.Vector.Sort.Heap.Pairing as H2
 
 implementations :: [(String, Vector Int -> Vector Int)]
