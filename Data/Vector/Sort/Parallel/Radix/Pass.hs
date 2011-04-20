@@ -1,8 +1,10 @@
 {-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
 module Data.Vector.Sort.Parallel.Radix.Pass (radixPass) where
 
-import Control.Monad.Primitive
 import GHC.Conc
+import Control.Concurrent
+import Control.Monad.Primitive
+import Control.Monad (replicateM_)
 
 import Data.Vector.Sort.Types
 import Data.Vector.Sort.Radix.Class
@@ -16,10 +18,10 @@ import qualified Data.Vector.Primitive as P
 
 import Prelude hiding (read)
 
-type RadixPass s a = Int -> PMVector s a -> ST s ()
+type RadixPass a = Int -> PMVector RealWorld a -> IO ()
 
 {-# INLINE radixPass #-}
-radixPass :: forall s a . Radix a => RadixPass s a
+radixPass :: forall a . Radix a => RadixPass a
 radixPass !pass !arr = do
   arrF <- P.unsafeFreeze arr
   let !n = lengthM arr
@@ -29,16 +31,20 @@ radixPass !pass !arr = do
       rSize = size (undefined :: a)
       chunkCount i = countUp rSize $ P.map (radix pass) (chunkAt i)
       chunkCounts = parVector (V.map chunkCount $ V.enumFromStepN 0 chunkSize nCaps)
-      cumCounts = V.prescanl (P.zipWith (+)) (P.replicate rSize 0) chunkCounts
+      cumCounts = V.scanl (P.zipWith (+)) (P.replicate rSize 0) chunkCounts
+      totCounts = index cumCounts nCaps
+      !offsets = P.prescanl (+) 0 totCounts
   tmp <- unsafeNew n
-  V.zipWithM_ (\ cumCount i -> do
-    counter <- P.unsafeThaw cumCount
-    let !chunk = chunkAt i
-	do_move x = do
-	  let !b = radix pass x
-	  i <- read counter b
-	  write counter b (i+1)
-	  write tmp i x
-    P.mapM_ do_move chunk)
-    cumCounts (V.map (* chunkSize) (V.enumFromN 0 nCaps))
+  lock <- newEmptyMVar
+  let go_move !i = do
+	counter <- P.unsafeThaw (P.zipWith (+) offsets (index cumCounts i))
+	let do_move x = do
+	      let !b = radix pass x
+	      i <- read counter b
+	      write counter b (i+1)
+	      write tmp i x
+	P.mapM_ do_move (chunkAt (i * chunkSize))
+	putMVar lock ()
+  P.mapM_ (forkIO . go_move) (P.enumFromN 0 nCaps)
+  replicateM_ nCaps (takeMVar lock)
   copyM arr tmp

@@ -19,6 +19,7 @@ import qualified Data.Vector.Sort.Quick as Quick
 import qualified Data.Vector.Sort.Parallel.Quick as QuickPar
 import qualified Data.Vector.Sort.Tim as Tim
 import qualified Data.Vector.Sort.Radix as Radix
+import qualified Data.Vector.Sort.Parallel.Radix as RadixPar
 
 insertion, binaryInsertion, merge, mergePar, quick, quickPar, tim, radix :: Vector Int -> Benchmark
 insertion xs = bench "Insertion sort" (whnf Ins.sort xs)
@@ -29,6 +30,7 @@ quick xs = bench "Quick sort" (whnf Quick.sort xs)
 quickPar xs = bench "Parallel quick sort" (whnf QuickPar.sort xs)
 tim xs = bench "Timsort" (whnf Tim.sort xs)
 radix xs = bench "Radix sort" (whnf Radix.sort xs)
+radixPar xs = bench "Parallel radix sort" (whnf RadixPar.sort xs)
 
 benchForSize :: GenIO -> Int -> IO Benchmark
 benchForSize g n = do
@@ -36,7 +38,7 @@ benchForSize g n = do
   let !xs = convert xs0 :: Vector Int
   let tests1 = if n <= sMALL_SORT_THRESHOLD then [] else [merge, tim, quick, radix]
   let tests2 = if n > 1000 then [] else [binaryInsertion, insertion]
-  let tests3 = if n <= sEQUENTIAL_SORT_THRESHOLD then [] else [mergePar, quickPar]
+  let tests3 = if n <= sEQUENTIAL_SORT_THRESHOLD then [] else [mergePar, quickPar, radixPar]
   return $ bgroup (show n) (map ($ xs) (tests1 ++ tests2 ++ tests3))
 
 main = withSystemRandom $ \ g -> do

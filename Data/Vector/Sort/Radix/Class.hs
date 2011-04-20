@@ -12,7 +12,7 @@ import GHC.Exts
 
 #include "MachDeps.h"
 
-class Prim a => Radix a where
+class (Show a, Prim a) => Radix a where
   passes :: a -> Int
   size :: a -> Int
   radix :: Int -> a -> Int
