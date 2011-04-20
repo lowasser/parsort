@@ -4,12 +4,12 @@ module Data.Vector.Sort.Radix.Pass (radixPass) where
 import Control.Monad.ST
 
 import Data.Vector.Sort.Types
-import Data.Vector.Generic (stream, unsafeFreeze, mapM_)
-import qualified Data.Vector.Fusion.Stream as Stream
-import Data.Vector.Generic.Mutable (unstream, unsafeAccum, unsafeNew, replicate)
-import Data.Vector.Primitive (prescanl, Prim)
+import Data.Vector.Generic (unsafeFreeze, mapM_)
+import Data.Vector.Generic.Mutable (unsafeNew)
+import Data.Vector.Primitive (prescanl, Prim, map, unsafeThaw)
 
 import Data.Vector.Sort.Radix.Class
+import Data.Vector.Sort.Radix.Utils
 
 import Data.Int
 
@@ -22,16 +22,15 @@ radixPass !pass !arr = do
   let n = lengthM arr
   arrF <- unsafeFreeze arr
   let rSize = size (undefined :: a)
-  counts <- replicate rSize 0
-  unsafeAccum (+) counts (Stream.map (\ x -> (radix pass x, 1)) (stream arrF))
+      counts = countUp rSize (map (radix pass) arrF)
   tmp <- unsafeNew n
-  movePass pass arrF tmp =<< unsafeFreeze counts
+  movePass pass arrF tmp counts
   copyM arr tmp
 
 {-# INLINE movePass #-}
 movePass :: forall s a . (Prim a, Radix a) => Int -> PVector a -> PMVector s a -> PVector Int -> ST s ()
 movePass !pass !arrF !tmp counts = do
-  prefix <- unstream (stream (prescanl (+) 0 counts)) :: ST s (PMVector s Int)
+  prefix <- unsafeThaw (prescanl (+) 0 counts) :: ST s (PMVector s Int)
   let do_move x = do
 	let !b = radix pass x
 	i <- read prefix b
