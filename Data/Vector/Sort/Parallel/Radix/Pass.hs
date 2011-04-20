@@ -30,13 +30,13 @@ radixPass !pass !arr !tmp = do
       chunkAt i = let k = chunkSize `min` n - i in slice i k arrF
       rSize = size (undefined :: a)
       chunkCount i = countUp rSize $ P.map (radix pass) (chunkAt i)
-      chunkCounts = parVector (V.map chunkCount $ V.enumFromStepN 0 chunkSize nCaps)
-      cumCounts = V.scanl (P.zipWith (+)) (P.replicate rSize 0) chunkCounts
+      !chunkCounts = parVector (V.map chunkCount $ V.enumFromStepN 0 chunkSize nCaps)
+      !cumCounts = V.scanl (P.zipWith (+)) (P.replicate rSize 0) chunkCounts
       totCounts = index cumCounts nCaps
       !offsets = P.prescanl (+) 0 totCounts
   lock <- newEmptyMVar
   let go_move !i = do
-	counter <- P.unsafeThaw (P.zipWith (+) offsets (index cumCounts i))
+	!counter <- P.unsafeThaw (P.zipWith (+) offsets (index cumCounts i))
 	let do_move x = do
 	      let !b = radix pass x
 	      i <- read counter b
