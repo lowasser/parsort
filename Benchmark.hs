@@ -18,8 +18,9 @@ import qualified Data.Vector.Sort.Parallel.Merge as MergePar
 import qualified Data.Vector.Sort.Quick as Quick
 import qualified Data.Vector.Sort.Parallel.Quick as QuickPar
 import qualified Data.Vector.Sort.Tim as Tim
+import qualified Data.Vector.Sort.Radix as Radix
 
-insertion, binaryInsertion, merge, mergePar, quick,  quickPar :: Vector Int -> Benchmark
+insertion, binaryInsertion, merge, mergePar, quick, quickPar, tim, radix :: Vector Int -> Benchmark
 insertion xs = bench "Insertion sort" (whnf Ins.sort xs)
 binaryInsertion xs = bench "Binary insertion sort" (whnf BI.sort xs)
 merge xs = bench "Merge sort" (whnf Merge.sort xs)
@@ -27,12 +28,13 @@ mergePar xs = bench "Parallel merge sort" (whnf MergePar.sort xs)
 quick xs = bench "Quick sort" (whnf Quick.sort xs)
 quickPar xs = bench "Parallel quick sort" (whnf QuickPar.sort xs)
 tim xs = bench "Timsort" (whnf Tim.sort xs)
+radix xs = bench "Radix sort" (whnf Radix.sort xs)
 
 benchForSize :: GenIO -> Int -> IO Benchmark
 benchForSize g n = do
   xs0 <- uniformVector g n
   let !xs = convert xs0 :: Vector Int
-  let tests1 = if n <= sMALL_SORT_THRESHOLD then [] else [merge, tim, quick]
+  let tests1 = if n <= sMALL_SORT_THRESHOLD then [] else [merge, tim, quick, radix]
   let tests2 = if n > 1000 then [] else [binaryInsertion, insertion]
   let tests3 = if n <= sEQUENTIAL_SORT_THRESHOLD then [] else [mergePar, quickPar]
   return $ bgroup (show n) (map ($ xs) (tests1 ++ tests2 ++ tests3))
