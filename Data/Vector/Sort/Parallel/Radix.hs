@@ -9,7 +9,7 @@ import Data.Vector.Sort.Parallel.Radix.Pass
 import Data.Vector.Sort.Types
 
 import Data.Vector.Generic (convert, stream, unsafeFreeze)
-import Data.Vector.Generic.Mutable (unstream)
+import Data.Vector.Generic.Mutable (unstream, unsafeNew)
 
 import Data.Int
 import Data.Word
@@ -33,7 +33,8 @@ sort xs = convert $ unsafePerformIO $ do
 {-# INLINE sortM #-}
 sortM :: forall a . Radix a => PMVector RealWorld a -> IO ()
 sortM arr = seq numCapabilities $ when (lengthM arr >= 0) $ do
+      tmp <- unsafeNew (lengthM arr) :: IO (PMVector RealWorld a)
       let go_radix i = when (i < passes (undefined :: a)) $ do
-	      radixPass i arr
+	      radixPass i arr tmp
 	      go_radix (i+1)
       go_radix 0

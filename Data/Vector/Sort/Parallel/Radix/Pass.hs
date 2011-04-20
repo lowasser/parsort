@@ -18,11 +18,11 @@ import qualified Data.Vector.Primitive as P
 
 import Prelude hiding (read)
 
-type RadixPass a = Int -> PMVector RealWorld a -> IO ()
+type RadixPass a = Int -> PMVector RealWorld a -> PMVector RealWorld a -> IO ()
 
 {-# INLINE radixPass #-}
 radixPass :: forall a . Radix a => RadixPass a
-radixPass !pass !arr = do
+radixPass !pass !arr !tmp = do
   arrF <- P.unsafeFreeze arr
   let !n = lengthM arr
       !nCaps = numCapabilities
@@ -34,7 +34,6 @@ radixPass !pass !arr = do
       cumCounts = V.scanl (P.zipWith (+)) (P.replicate rSize 0) chunkCounts
       totCounts = index cumCounts nCaps
       !offsets = P.prescanl (+) 0 totCounts
-  tmp <- unsafeNew n
   lock <- newEmptyMVar
   let go_move !i = do
 	counter <- P.unsafeThaw (P.zipWith (+) offsets (index cumCounts i))
