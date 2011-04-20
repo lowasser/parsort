@@ -36,7 +36,7 @@ radixPass !pass !arr !tmp = do
       !offsets = P.prescanl (+) 0 totCounts
   lock <- newEmptyMVar
   let go_move !i = do
-	!counter <- P.unsafeThaw (P.zipWith (+) offsets (index cumCounts i))
+	!counter <- P.thaw (P.zipWith (+) offsets (index cumCounts i))
 	let do_move x = do
 	      let !b = radix pass x
 	      i <- read counter b
@@ -44,6 +44,6 @@ radixPass !pass !arr !tmp = do
 	      write tmp i x
 	P.mapM_ do_move (chunkAt (i * chunkSize))
 	putMVar lock ()
-  P.mapM_ (forkIO . go_move) (P.enumFromN 0 nCaps)
+  P.mapM_ (\ i -> forkOnIO i $ go_move i) (P.enumFromN 0 nCaps)
   replicateM_ nCaps (takeMVar lock)
   copyM arr tmp
