@@ -1,15 +1,12 @@
 {-# LANGUAGE ScopedTypeVariables, RecordWildCards, NamedFieldPuns, BangPatterns, ImplicitParams #-}
 {-# OPTIONS -funbox-strict-fields #-}
-module Data.Vector.Sort.Tim (sort, sortBy, sortVector) where
+module Data.Vector.Sort.Parallel.Tim (sort, sortBy) where
 
+import Control.Concurrent
 import Control.Monad.Primitive
 
-import Foreign.Storable
-import Foreign.Ptr
-import Foreign.Marshal.Alloc
-
-import Data.Vector.Sort.Types
-import Data.Vector.Sort.Comparator
+import Data.Vector.Sort.Common
+import qualified Data.Vector.Sort.Tim as Seq
 
 import Data.Vector.Sort.Tim.Run
 import Data.Vector.Sort.Tim.Merge
@@ -21,9 +18,9 @@ import qualified Data.Vector.Sort.Insertion.Binary as BinIns
 
 import Prelude hiding (read, length)
 
-data Run = Run {runOffset :: !Int, runLength :: !Int} deriving (Show)
+data Run = Run {runOffset :: !Int, runLength :: !Int, lock :: !(MVar ())}
 
-data Stack = Stack :> !Run | End deriving (Show)
+data Stack = Stack :> !Run | End
 
 infixl 6 :>
 
@@ -36,16 +33,11 @@ sortBy :: Vector v a => LEq a -> v a -> v a
 sortBy (<=?) xs = unsafePerformIO (sortPermIO sortVector (<=?) xs)
 
 sortVector :: (?cmp :: Comparator) => PMVector RealWorld Int -> IO ()
-sortVector !mv = alloca $ \ gallopPtr -> do
-	poke gallopPtr mIN_GALLOP
-	sortByM gallopPtr mv
+sortVector = parallelSort (Seq.sortVector) sortByM
 
 {-# INLINE sortByM #-}
-sortByM :: (?cmp :: Comparator) => Ptr Int -> PMVector RealWorld Int -> IO ()
-sortByM !gallopPtr !xs
-  | n < 2		= return ()
-  | n < mIN_MERGE	= countRunAndMakeAscending xs $ primToPrim . BinIns.sortByM xs
-  | otherwise		= do
+sortByM :: (?cmp :: Comparator) => PMVector RealWorld Int -> IO ()
+sortByM !xs = do
       stack <- consumeRuns End 0
       mergeForceCollapse stack
   where
@@ -55,40 +47,46 @@ sortByM !gallopPtr !xs
       | off >= n	= return stack
       | otherwise	= {-# CORE "consumeRuns" #-} countRunAndMakeAscending (dropM off xs) $ \ runLen -> do
 	  let force = min (n - off) minRun
-	  primToPrim $ BinIns.sortByM (takeM force (dropM off xs)) runLen
+	  lock <- newEmptyMVar
+	  forkIO $ do
+	    primToPrim $ BinIns.sortByM (sliceM off force xs) runLen
+	    putMVar lock ()
 	  let runLength = max runLen force
-	  let stack' = stack :> Run{runOffset = off, runLength}
+	  let stack' = stack :> Run{runOffset = off, runLength, lock}
 	  stack'' <- mergeCollapse stack'
 	  consumeRuns stack'' (off + runLength)
     mergeCollapse (stack :> s1 :> s2 :> s3)
       | runLength s1 <= runLength s2 + runLength s3
 	  = if runLength s1 < runLength s3 then do
-	      mergeRuns s1 s2
-	      mergeCollapse (stack :> concatRun s1 s2 :> s3)
+	      s' <- mergeRuns s1 s2
+	      mergeCollapse (stack :> s' :> s3)
 	    else do
-	      mergeRuns s2 s3
-	      mergeCollapse (stack :> s1 :> concatRun s2 s3)
+	      s' <- mergeRuns s2 s3
+	      mergeCollapse (stack :> s1 :> s')
     mergeCollapse (stack :> s1 :> s2)
       | runLength s1 <= runLength s2
-	  = do	mergeRuns s1 s2
-	  	mergeCollapse (stack :> concatRun s1 s2)
+	  = do	s' <- mergeRuns s1 s2
+	  	mergeCollapse (stack :> s')
     mergeCollapse stack = return stack
     
     mergeForceCollapse (stack :> s1 :> s2) = do
-      mergeRuns s1 s2
-      mergeForceCollapse (stack :> concatRun s1 s2)
-    mergeForceCollapse _ = return ()
+      s' <- mergeRuns s1 s2
+      mergeForceCollapse (stack :> s')
+    mergeForceCollapse (End :> Run _ _ lock) = takeMVar lock
+    mergeForceCollapse End = return ()
 
-    mergeRuns r1 r2 = {-# CORE "mergeRuns" #-} assert (not (nullRun r1) && not (nullRun r2) && consecutive r1 r2) $ do
-      g <- peek gallopPtr
-      g' <- primToPrim $ merge xs (runOffset r1) (runLength r1) (runLength r2) g
-      poke gallopPtr g'
+    mergeRuns r1@(Run off1 len1 lock1) r2@(Run _ len2 lock2) = {-# SCC "mergeRuns" #-}
+      assert (not (nullRun r1) && not (nullRun r2) && consecutive r1 r2) $ do
+	lock <- newEmptyMVar
+	forkIO $ do
+	  takeMVar lock1
+	  takeMVar lock2
+	  primToPrim $ merge xs off1 len1 len2 mIN_GALLOP
+	  putMVar lock ()
+	return (Run off1 (len1 + len2) lock)
 
 consecutive :: Run -> Run -> Bool
-consecutive (Run off1 len1) (Run off2 _) = off2 == off1 + len1
-
-concatRun :: Run -> Run -> Run
-concatRun (Run off1 len1) (Run _ len2) = Run off1 (len1 + len2)
+consecutive (Run off1 len1 _) (Run off2 _ _) = off2 == off1 + len1
 
 nullRun :: Run -> Bool
 nullRun Run{runLength} = runLength == 0

@@ -1,5 +1,5 @@
 {-# LANGUAGE ImplicitParams, BangPatterns #-}
-module Data.Vector.Sort.Heap.Binary (sortBy, sortByM) where
+module Data.Vector.Sort.Heap.Binary (sort, sortBy, sortByM) where
 
 import Control.Monad
 
