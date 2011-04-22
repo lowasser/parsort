@@ -37,7 +37,7 @@ a <? b = not (a >=? b)
 a >=? b = b <=? a
 a >? b = b <? a
 
-{-# INLINE [0] sortPerm #-}
+{-# INLINE sortPerm #-}
 sortPerm :: Vector v a => ((?cmp :: Comparator) => PVector Elem -> PVector Elem) -> LEq a -> v a -> v a
 sortPerm sortAlg (<=?) xs =
   let !n = length xs; perm = sortAlg (enumFromN 0 n) in

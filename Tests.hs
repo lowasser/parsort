@@ -13,6 +13,8 @@ import qualified Data.Vector.Sort.Parallel.Merge as PM
 import qualified Data.Vector.Sort.Insertion as I
 import qualified Data.Vector.Sort.Insertion.Binary as IB
 import qualified Data.Vector.Sort.Tim as T
+import qualified Data.Vector.Sort.Heap.Binary as H
+import qualified Data.Vector.Sort.Heap.Pairing as H2
 import qualified Data.Vector.Sort.Radix as R
 import qualified Data.Vector.Sort.Parallel.Radix as PR
 
@@ -26,7 +28,8 @@ implementations = [
   ("p-merge", PM.sort),
   ("tim", T.sort),
   ("radix", R.sort),
-  ("p-radix", PR.sort)]
+  ("p-radix", PR.sort),
+  ("heap", H.sortBy (<=))]
 
 main = quickCheck (\ xs -> conjoin
     [printTestCase sortImpl $ L.sort xs == toList (theSort (fromList xs))
