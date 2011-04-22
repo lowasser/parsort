@@ -28,7 +28,7 @@ implementations = [
   ("p-merge", PM.sort),
   ("tim", T.sort),
   ("radix", R.sort),
-  ("heap", H.sortBy (<=)),
+  ("heap", H.sort),
   ("p-tim", PT.sort)]
 
 main = quickCheck (\ xs -> conjoin

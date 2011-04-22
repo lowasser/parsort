@@ -34,7 +34,7 @@ quick xs = bench "Quick sort" (whnf Quick.sort xs)
 quickPar xs = bench "Parallel quick sort" (whnf QuickPar.sort xs)
 tim xs = bench "Timsort" (whnf Tim.sort xs)
 radix xs = bench "Radix sort" (whnf Radix.sort xs)
-binaryHeap xs = bench "Binary heap sort" (sortBench BinHeap.sort xs)
+binaryHeap xs = bench "Binary heap sort" (whnf BinHeap.sort xs)
 timPar xs = bench "Parallel timsort" (whnf TimPar.sort xs)
 
 benchForSize :: GenIO -> Int -> IO Benchmark
