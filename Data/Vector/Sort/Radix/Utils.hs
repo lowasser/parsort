@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Data.Vector.Sort.Radix.Utils (countUp) where
+module Data.Vector.Sort.Radix.Utils where
 
 import Control.Monad.Primitive
 import Data.Primitive
