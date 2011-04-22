@@ -3,23 +3,23 @@ module Data.Vector.Sort.Parallel.Radix.Pass (radixPass) where
 
 import GHC.Conc
 import Control.Concurrent
-import Control.Monad.Primitive
 import Control.Monad (replicateM_)
 
 import Data.Vector.Sort.Types
-import Data.Vector.Sort.Radix.Class
 import Data.Vector.Sort.Radix.Utils
 import Data.Vector.Sort.Parallel.Stream
 
 import Data.Vector.Fusion.Stream (liftStream)
 import Data.Vector.Fusion.Stream.Monadic (zipWith, prescanl)
-
+import Data.Vector.Generic (stream)
 import Data.Vector.Generic.Mutable (unsafeNew, transform)
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Primitive as P
 
-import Prelude hiding (read)
+import Data.Word
+
+import Prelude hiding (read, zipWith, length)
 
 {-# INLINE radixPass #-}
 radixPass :: P.Prim a => (a -> Word8) -> PVector a -> IO (PVector a)
@@ -32,27 +32,28 @@ radixPass look !arr = do
       !chunkCounts = parVector (V.map chunkCount $ V.enumFromStepN 0 chunkSize nCaps)
   tmp <- unsafeNew n
   lock <- newEmptyMVar
-  let go_move (i, counter) = forkOnIO i $ do
-	!counter <- P.thaw counter
+  let go_move (i, counter0) = forkOnIO i $ do
+	!counter <- P.thaw counter0
 	let do_move x = do
-	      let !b = fromIntegral $ radix pass x
+	      let !b = fromIntegral $ look x
 	      j <- read counter b
 	      write counter b (j+1)
 	      write tmp j x
 	P.mapM_ do_move (chunkAt (i * chunkSize))
 	putMVar lock ()
-  P.mapM_ go_move $ P.imap (,) $ offsets chunkCounts
+  V.mapM_ go_move $ V.imap (,) $ offsets chunkCounts
   replicateM_ nCaps (takeMVar lock)
   P.unsafeFreeze tmp
 
 {-# INLINE offsets #-}
-offsets :: VVector (PVector Int) -> Vector (PVector Int)
-offsets !chunkCounts = prescanl (P.zipWith (+)) (P.replicate 256 0) chunkCounts
+offsets :: VVector (PVector Int) -> VVector (PVector Int)
+offsets !chunkCounts = V.prescanl (P.zipWith (+)) tots chunkCounts
   where !tots = totalOffsets chunkCounts
 
 totalOffsets :: VVector (PVector Int) -> PVector Int
 totalOffsets !counts = P.create $ do
   tot <- unsafeNew 256
+  zeroOut tot
   V.forM_ counts $ \ count -> transform (zipWith (+) (liftStream $ stream count)) tot
   transform (prescanl (+) 0) tot
   return tot

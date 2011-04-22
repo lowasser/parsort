@@ -1,40 +1,42 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-module Data.Vector.Sort.Parallel.Radix (sort) where
-
-import Control.Monad (when)
-import Control.Monad.Primitive
+{-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
+module Data.Vector.Sort.Parallel.Radix (sort, sortWith, Radix(..)) where
 
 import Data.Vector.Sort.Radix.Class
 import Data.Vector.Sort.Parallel.Radix.Pass
 import Data.Vector.Sort.Types
 
-import Data.Vector.Generic (convert, stream, unsafeFreeze)
-import Data.Vector.Generic.Mutable (unstream, unsafeNew)
+import Data.Vector.Generic (convert, stream, unstream)
+import Data.Vector.Primitive (enumFromN)
 
 import Data.Int
 import Data.Word
-
-import GHC.Conc
+import Prelude hiding (length)
 import System.IO.Unsafe
 
-{-# SPECIALIZE sort ::
-      PVector Int -> PVector Int,
-      PVector Word -> PVector Word,
-      PVector Int32 -> PVector Int32,
-      PVector Word32 -> PVector Word32,
-      PVector Int64 -> PVector Int64,
-      PVector Word64 -> PVector Word64 #-}
-sort :: forall v a . (Vector v a, Radix a) => v a -> v a
-sort xs = convert $ unsafePerformIO $ do
-  mv <- unstream (stream xs)
-  sortM mv
-  unsafeFreeze mv :: IO (PVector a)
+{-# INLINE sort #-}
+sort :: (Radix a, Vector v a) => v a -> v a
+sort arr = convert (unsafePerformIO (sortRadix (convert arr)))
 
-{-# INLINE sortM #-}
-sortM :: forall a . Radix a => PMVector RealWorld a -> IO ()
-sortM arr = seq numCapabilities $ when (lengthM arr >= 0) $ do
-      tmp <- unsafeNew (lengthM arr) :: IO (PMVector RealWorld a)
-      let go_radix i = when (i < passes (undefined :: a)) $ do
-	      radixPass i arr tmp
-	      go_radix (i+1)
-      go_radix 0
+{-# INLINE sortWith #-}
+sortWith :: (Radix r, Vector v a) => (a -> r) -> v a -> v a
+sortWith key arr = backpermute arr $ unsafePerformIO $ sortRadixWith (unstream $ fmap key $ stream arr)
+
+{-# SPECIALIZE sortRadix ::
+      PVector Int -> IO (PVector Int) #-}
+sortRadix :: forall a . Radix a => PVector a -> IO (PVector a)
+sortRadix = sort_pass 0 where
+  sort_pass p !xs
+    | p < passes (undefined :: a)
+	= sort_pass (p+1) =<< radixPass (radix p) xs
+    | otherwise = return xs
+
+{-# SPECIALIZE sortRadixWith ::
+      PVector Int -> IO (PVector Int),
+      PVector Word -> IO (PVector Int) #-}
+sortRadixWith :: forall a . Radix a => PVector a -> IO (PVector Int)
+sortRadixWith !radixes = sort_pass 0 (enumFromN 0 n) where
+  n = length radixes
+  sort_pass p !xs
+    | p < passes (undefined :: a)
+        = sort_pass (p+1) =<< radixPass (\ i -> radix p (index radixes i)) xs
+    | otherwise = return xs
