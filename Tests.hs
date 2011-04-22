@@ -16,6 +16,7 @@ import qualified Data.Vector.Sort.Tim as T
 import qualified Data.Vector.Sort.Heap.Binary as H
 import qualified Data.Vector.Sort.Heap.Pairing as H2
 import qualified Data.Vector.Sort.Radix as R
+import qualified Data.Vector.Sort.Intro as I
 
 implementations :: [(String, Vector Int -> Vector Int)]
 implementations = [
@@ -27,8 +28,8 @@ implementations = [
   ("p-merge", PM.sort),
   ("tim", T.sort),
   ("radix", R.sort),
-  ("heap", H.sortBy (<=)),
-  ("pairing-heap", H2.sortBy (<=))]
+  ("heap", H.sort),
+  ("intro", I.sort)]
 
 main = quickCheck (\ xs -> conjoin
     [printTestCase sortImpl $ L.sort xs == toList (theSort (fromList xs))
