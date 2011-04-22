@@ -4,10 +4,12 @@ module Data.Vector.Sort.Radix.Utils (countUp) where
 import Control.Monad.Primitive
 import Data.Primitive
 
-import Data.Vector.Generic (stream, unsafeFreeze)
+import Data.Vector.Generic (stream)
 import Data.Vector.Generic.Mutable (unsafeAccum)
 import Data.Vector.Primitive.Mutable (unsafeNew, MVector(..))
 import Data.Vector.Sort.Types
+
+import Data.Word
 
 import Prelude hiding (read, mapM_)
 

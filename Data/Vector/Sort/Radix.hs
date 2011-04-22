@@ -1,13 +1,11 @@
 {-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
 module Data.Vector.Sort.Radix (sort, sortWith, Radix(..)) where
 
-import Control.Monad (when)
-
 import Data.Vector.Sort.Radix.Class
 import Data.Vector.Sort.Radix.Pass
 import Data.Vector.Sort.Types
 
-import Data.Vector.Generic (convert, enumFromN, stream, unstream)
+import Data.Vector.Generic (convert, stream, unstream)
 import Data.Vector.Primitive (enumFromN)
 
 import Data.Int
@@ -26,7 +24,7 @@ sortWith key arr = backpermute arr $ sortRadixWith (unstream $ fmap key $ stream
       PVector Int -> PVector Int #-}
 sortRadix :: forall a . Radix a => PVector a -> PVector a
 sortRadix = sort_pass 0 where
-  sort_pass i !xs
+  sort_pass p !xs
     | p < passes (undefined :: a)
 	= sort_pass (p+1) $ radixPass (radix p) xs
     | otherwise = xs

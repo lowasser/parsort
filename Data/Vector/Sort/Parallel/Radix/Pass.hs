@@ -11,8 +11,6 @@ import Data.Vector.Sort.Radix.Class
 import Data.Vector.Sort.Radix.Utils
 import Data.Vector.Sort.Parallel.Stream
 
-import Data.Vector.Generic.Mutable (unsafeNew)
-
 import qualified Data.Vector as V
 import qualified Data.Vector.Primitive as P
 
@@ -28,17 +26,16 @@ radixPass !pass !arr !tmp = do
       !nCaps = numCapabilities
       !chunkSize = (n + nCaps - 1) `quot` nCaps
       chunkAt i = let k = chunkSize `min` n - i in slice i k arrF
-      rSize = size (undefined :: a)
-      chunkCount i = countUp rSize $ P.map (radix pass) (chunkAt i)
+      chunkCount i = P.create $ countUp $ P.map (radix pass) (chunkAt i)
       !chunkCounts = parVector (V.map chunkCount $ V.enumFromStepN 0 chunkSize nCaps)
-      !cumCounts = V.scanl (P.zipWith (+)) (P.replicate rSize 0) chunkCounts
+      !cumCounts = V.scanl (P.zipWith (+)) (P.replicate 256 0) chunkCounts
       totCounts = index cumCounts nCaps
       !offsets = P.prescanl (+) 0 totCounts
   lock <- newEmptyMVar
   let go_move !i = do
 	!counter <- P.thaw (P.zipWith (+) offsets (index cumCounts i))
 	let do_move x = do
-	      let !b = radix pass x
+	      let !b = fromIntegral $ radix pass x
 	      i <- read counter b
 	      write counter b (i+1)
 	      write tmp i x
