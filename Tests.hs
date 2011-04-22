@@ -13,10 +13,12 @@ import qualified Data.Vector.Sort.Parallel.Merge as PM
 import qualified Data.Vector.Sort.Insertion as I
 import qualified Data.Vector.Sort.Insertion.Binary as IB
 import qualified Data.Vector.Sort.Tim as T
+import qualified Data.Vector.Sort.Parallel.Tim as PT
 import qualified Data.Vector.Sort.Heap.Binary as H
 import qualified Data.Vector.Sort.Radix as R
 import qualified Data.Vector.Sort.Intro as Intro
 import qualified Data.Vector.Sort.Parallel.Tim as PT
+import qualified Data.Vector.Sort.Parallel.Radix as PR
 
 implementations :: [(String, Vector Int -> Vector Int)]
 implementations = [
@@ -30,6 +32,7 @@ implementations = [
   ("radix", R.sort),
   ("heap", H.sort),
   ("intro", Intro.sort),
+  ("p-radix", PR.sort),
   ("p-tim", PT.sort)]
 
 main = quickCheck (\ xs -> conjoin
