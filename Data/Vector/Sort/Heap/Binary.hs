@@ -7,6 +7,11 @@ import Data.Vector.Sort.Common
 
 import Prelude hiding (read)
 
+{-# INLINE sort #-}
+sort :: (Vector v a, Ord a) => v a -> v a
+sort = sortBy (<=)
+
+{-# INLINE sortBy #-}
 sortBy :: Vector v a => LEq a -> v a -> v a
 sortBy = sortPermM sortByM
 
@@ -15,12 +20,14 @@ sortByM = sequentialSort $ \ xs -> do
   heapify xs
   sortHeap xs
 
+{-# INLINE heapify #-}
 heapify :: (?cmp :: Comparator) => PMVector s Elem -> ST s ()
 heapify xs = go_heapify ((lengthM xs) `quot` 2) where
   go_heapify k = when (k >= 0) $ do
     siftTop xs k =<< read xs k
     go_heapify (k-1)
 
+{-# INLINE siftTop #-}
 siftTop :: (?cmp :: Comparator) => PMVector s Elem -> Int -> Elem -> ST s ()
 siftTop !xs k !x
   | c2 < n = do
@@ -37,6 +44,7 @@ siftTop !xs k !x
 	c2 = 2 * k + 2
 	siftChild !c !xC = if xC <=? x then write xs k x else write xs k xC >> siftTop xs c x
 
+{-# INLINE sortHeap #-}
 sortHeap :: (?cmp :: Comparator) => PMVector s Elem -> ST s ()
 sortHeap xs = go_sort (lengthM xs - 1) where
   go_sort k = when (k > 0) $ do

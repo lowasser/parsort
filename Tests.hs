@@ -15,16 +15,18 @@ import qualified Data.Vector.Sort.Insertion.Binary as IB
 import qualified Data.Vector.Sort.Tim as T
 import qualified Data.Vector.Sort.Heap.Binary as H
 import qualified Data.Vector.Sort.Heap.Pairing as H2
+import qualified Data.Vector.Sort.Radix as R
 
 implementations :: [(String, Vector Int -> Vector Int)]
 implementations = [
-  ("insertion", I.sortBy (<=)),
-  ("insertion-binary", IB.sortBy (<=) ),
-  ("quick", Q.sortBy (<=)),
-  ("p-quick", PQ.sortBy (<=)),
-  ("merge", M.sortBy (<=)),
-  ("p-merge", PM.sortBy (<=)),
-  ("tim", T.sortBy (<=)),
+  ("insertion", I.sort),
+  ("insertion-binary", IB.sort),
+  ("quick", Q.sort),
+  ("p-quick", PQ.sort),
+  ("merge", M.sort),
+  ("p-merge", PM.sort),
+  ("tim", T.sort),
+  ("radix", R.sort),
   ("heap", H.sortBy (<=)),
   ("pairing-heap", H2.sortBy (<=))]
 
