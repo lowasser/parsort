@@ -15,7 +15,11 @@ import qualified Data.Vector.Sort.Insertion.Binary as IB
 import qualified Data.Vector.Sort.Tim as T
 import qualified Data.Vector.Sort.Heap.Binary as H
 import qualified Data.Vector.Sort.Radix as R
+<<<<<<< HEAD
 import qualified Data.Vector.Sort.Intro as Int
+=======
+import qualified Data.Vector.Sort.Parallel.Tim as PT
+>>>>>>> master
 
 implementations :: [(String, Vector Int -> Vector Int)]
 implementations = [
@@ -28,7 +32,8 @@ implementations = [
   ("tim", T.sort),
   ("radix", R.sort),
   ("heap", H.sort),
-  ("intro", Int.sort)]
+  ("intro", Int.sort),
+  ("p-tim", PT.sort)]
 
 main = quickCheck (\ xs -> conjoin
     [printTestCase sortImpl $ L.sort xs == toList (theSort (fromList xs))
