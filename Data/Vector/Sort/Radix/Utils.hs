@@ -17,9 +17,9 @@ zeroOut (MVector off n mb) = memsetByteArray mb (off * siz) 0 (n * siz)
   where siz = sizeOf (undefined :: a)
 
 {-# INLINE countUp #-}
-countUp :: Int -> PVector Int -> PVector Int
-countUp sz buckets = unsafeInlineST $ do
-  counts <- unsafeNew sz
+countUp :: PVector Word8 -> ST s (PMVector s Int)
+countUp buckets = do
+  counts <- unsafeNew 256
   zeroOut counts
-  unsafeAccum (+) counts (fmap (\ b -> (b, 1)) (stream buckets))
-  unsafeFreeze counts
+  unsafeAccum (+) counts (fmap (\ b -> (fromIntegral b, 1)) (stream buckets))
+  return counts

@@ -1,5 +1,5 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-module Data.Vector.Sort.Radix (sort, Radix(..)) where
+{-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
+module Data.Vector.Sort.Radix (sort, sortWith, Radix(..)) where
 
 import Control.Monad (when)
 
@@ -7,24 +7,37 @@ import Data.Vector.Sort.Radix.Class
 import Data.Vector.Sort.Radix.Pass
 import Data.Vector.Sort.Types
 
-import Data.Vector.Generic (convert)
+import Data.Vector.Generic (convert, enumFromN, stream, unstream)
+import Data.Vector.Primitive (enumFromN)
 
 import Data.Int
 import Data.Word
+import Prelude hiding (length)
 
-{-# SPECIALIZE sort ::
+{-# INLINE sort #-}
+sort :: (Radix a, Vector v a) => v a -> v a
+sort arr = convert (sortRadix (convert arr))
+
+{-# INLINE sortWith #-}
+sortWith :: (Radix r, Vector v a) => (a -> r) -> v a -> v a
+sortWith key arr = backpermute arr $ sortRadixWith (unstream $ fmap key $ stream arr)
+
+{-# SPECIALIZE sortRadix ::
+      PVector Int -> PVector Int #-}
+sortRadix :: forall a . Radix a => PVector a -> PVector a
+sortRadix = sort_pass 0 where
+  sort_pass i !xs
+    | p < passes (undefined :: a)
+	= sort_pass (p+1) $ radixPass (radix p) xs
+    | otherwise = xs
+
+{-# SPECIALIZE sortRadixWith ::
       PVector Int -> PVector Int,
-      PVector Word -> PVector Word,
-      PVector Int32 -> PVector Int32,
-      PVector Word32 -> PVector Word32,
-      PVector Int64 -> PVector Int64,
-      PVector Word64 -> PVector Word64 #-}
-sort :: forall v a . (Vector v a, Radix a) => v a -> v a
-sort xs = convert (modify sortM (convert xs :: PVector a))
-
-sortM :: forall s a . Radix a => PMVector s a -> ST s ()
-sortM arr = do
-  let go_radix i = when (i < passes (undefined :: a)) $ do
-	  radixPass i arr
-	  go_radix (i+1)
-  go_radix 0
+      PVector Word -> PVector Int #-}
+sortRadixWith :: forall a . Radix a => PVector a -> PVector Int
+sortRadixWith !radixes = sort_pass 0 (enumFromN 0 n) where
+  n = length radixes
+  sort_pass p !xs
+    | p < passes (undefined :: a)
+        = sort_pass (p+1) $ radixPass (\ i -> radix p (index radixes i)) xs
+    | otherwise = xs
