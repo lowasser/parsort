@@ -1,5 +1,7 @@
-{-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE ImplicitParams, BangPatterns #-}
 module Data.Vector.Sort.Intro (sort, sortBy) where
+
+import Data.Bits
 
 import Data.Vector.Sort.Common
 import Data.Vector.Sort.Quick.Pivot
@@ -28,4 +30,10 @@ sortM !arr = let
     | otherwise = Heap.sortByM
   in sortImpl 0 arr
   where depthLimit = 2 * intLog n
-	n = lengthM xs
+	n = lengthM arr
+
+intLog :: Int -> Int
+intLog = ilog 0 where
+  ilog !k !x
+    | x <= 1	= k
+    | otherwise = ilog (k+1) (x `shiftR` 1)
